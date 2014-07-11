@@ -1,7 +1,7 @@
 redigomock
 ==========
 
-Easy way to unit test projects using redigo library (Redis client in go)
+Easy way to unit test projects using [redigo library](https://github.com/garyburd/redigo) (Redis client in go)
 
 usage
 =====
