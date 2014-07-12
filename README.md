@@ -6,8 +6,15 @@ redigomock
 
 Easy way to unit test projects using [redigo library](https://github.com/garyburd/redigo) (Redis client in go)
 
+install
+-------
+
+```
+go get -u github.com/rafaeljusto/redigomock
+```
+
 usage
-=====
+-----
 
 ```go
 package main
