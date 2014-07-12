@@ -26,7 +26,7 @@ type Person struct {
 func RetrievePerson(conn redis.Conn, id string) (Person, error) {
 	var person Person
 
-	values, err := redis.Values(conn.Do("HGETALL", "person:1"))
+	values, err := redis.Values(conn.Do("HGETALL", fmt.Sprintf("person:%s", id)))
 	if err != nil {
 		return person, err
 	}
@@ -61,7 +61,7 @@ func main() {
 
 	// Simulate command error
 
-	redigomock.Command("HGETALL", "person:1").Error(fmt.Errorf("Simulate error!"))
+	redigomock.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulate error!"))
 
 	person, err = RetrievePerson(redigomock.NewConn(), "1")
 	if err == nil {
