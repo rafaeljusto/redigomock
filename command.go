@@ -2,7 +2,6 @@
 // Use of this source code is governed by a GPL
 // license that can be found in the LICENSE file.
 
-// redigomock is a mock for redigo library (redis client)
 package redigomock
 
 import (
