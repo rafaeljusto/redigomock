@@ -1,0 +1,17 @@
+language: go
+
+go:
+  - 1.3
+
+install:
+  - go get github.com/garyburd/redigo
+
+script:
+  - go test
+
+notifications:
+  email:
+    recipients:
+      - rafael@justo.net.br
+    on_success: change
+    on_failure: always

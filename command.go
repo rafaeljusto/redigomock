@@ -1,3 +1,8 @@
+// Copyright 2014 Rafael Dantas Justo. All rights reserved.
+// Use of this source code is governed by a GPL
+// license that can be found in the LICENSE file.
+
+// redigomock is a mock for redigo library (redis client)
 package redigomock
 
 import (
@@ -14,28 +19,32 @@ func init() {
 	commands = make(map[string]*Cmd)
 }
 
+// Cmd stores the registered information about a command to return it later when request by a
+// command execution
 type Cmd struct {
-	CommandName string
-	Args        []interface{}
-	Response    interface{}
-	Err         error
+	Response interface{} // Response to send back when this command/arguments are called
+	Err      error       // Error to send back when this command/arguments are called
 }
 
+// Command register a command in the mock system using the same arguments of a Do or Send commands.
+// It will return a registered command object where you can set the response or error
 func Command(commandName string, args ...interface{}) *Cmd {
-	cmd := Cmd{
-		CommandName: commandName,
-		Args:        args,
-	}
-
+	println("OPLE2: " + generateKey(commandName, args))
+	var cmd Cmd
 	commands[generateKey(commandName, args)] = &cmd
 	return &cmd
 }
 
+// Expect sets a response for this command. Everytime a Do or Receive methods are executed for a
+// registered command this response or error will be returned. You cannot set a response and a error
+// for the same command/arguments
 func (c *Cmd) Expect(response interface{}) {
 	c.Response = response
 	c.Err = nil
 }
 
+// ExpectMap works in the same way of the Expect command, but has a key/value input to make it
+// easier to build test environments
 func (c *Cmd) ExpectMap(response map[string]string) {
 	var values []interface{}
 	for key, value := range response {
@@ -47,11 +56,14 @@ func (c *Cmd) ExpectMap(response map[string]string) {
 	c.Err = nil
 }
 
-func (c *Cmd) Error(err error) {
+// ExpectError allows you to force an error when executing a command/arguments
+func (c *Cmd) ExpectError(err error) {
 	c.Response = nil
 	c.Err = err
 }
 
+// generateKey build an id for the command/arguments to make it easier to find in the registered
+// commands
 func generateKey(commandName string, args []interface{}) string {
 	key := commandName
 
