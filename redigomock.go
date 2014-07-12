@@ -43,7 +43,6 @@ func (c Conn) Err() error {
 // command name and arguments, if so the corresponding response or error is returned. If no
 // registered command is found an error is returned
 func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
-	println("OPLE1: " + generateKey(commandName, args))
 	cmd, found := commands[generateKey(commandName, args)]
 	if !found {
 		return nil, fmt.Errorf("Command %s with arguments %v not registered in redigomock library!",
@@ -64,7 +63,6 @@ func (c Conn) Send(commandName string, args ...interface{}) error {
 		args:        args,
 	})
 
-	println("OPLE3: " + generateKey(commandName, args))
 	return nil
 }
 
@@ -80,7 +78,7 @@ func (c Conn) Receive() (reply interface{}, err error) {
 		return nil, fmt.Errorf("No more items")
 	}
 
-	reply, err = c.Do(queue[0].commandName, queue[0].args)
+	reply, err = c.Do(queue[0].commandName, queue[0].args...)
 	queue = queue[1:]
 	return
 }

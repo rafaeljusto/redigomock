@@ -79,8 +79,6 @@ func TestDoCommandWithError(t *testing.T) {
 }
 
 func TestSendFlushReceive(t *testing.T) {
-	println("==============================")
-
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",

@@ -29,7 +29,6 @@ type Cmd struct {
 // Command register a command in the mock system using the same arguments of a Do or Send commands.
 // It will return a registered command object where you can set the response or error
 func Command(commandName string, args ...interface{}) *Cmd {
-	println("OPLE2: " + generateKey(commandName, args))
 	var cmd Cmd
 	commands[generateKey(commandName, args)] = &cmd
 	return &cmd
