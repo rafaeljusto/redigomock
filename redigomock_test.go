@@ -78,6 +78,14 @@ func TestDoCommandWithError(t *testing.T) {
 	}
 }
 
+func TestDoCommandWithUnexpectedCommand(t *testing.T) {
+	_, err := RetrievePerson(NewConn(), "X")
+	if err == nil {
+		t.Error("Should detect a command not registered!")
+		return
+	}
+}
+
 func TestSendFlushReceive(t *testing.T) {
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
@@ -88,7 +96,8 @@ func TestSendFlushReceive(t *testing.T) {
 		"age":  "28",
 	})
 
-	people, err := RetrievePeople(NewConn(), []string{"1", "2"})
+	conn := NewConn()
+	people, err := RetrievePeople(conn, []string{"1", "2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,6 +112,10 @@ func TestSendFlushReceive(t *testing.T) {
 
 	if people[0].Age != 42 || people[1].Age != 28 {
 		t.Error("People age order are wrong")
+	}
+
+	if _, err := conn.Receive(); err == nil {
+		t.Error("Not detecting when there's no more items to receive")
 	}
 }
 
@@ -120,5 +133,21 @@ func TestSendFlushReceiveWithError(t *testing.T) {
 	_, err := RetrievePeople(NewConn(), []string{"1", "2", "3"})
 	if err == nil {
 		t.Error("Not detecting error when using send/flush/receive")
+	}
+}
+
+func TestDummyFunctions(t *testing.T) {
+	conn := NewConn()
+
+	if conn.Close() != nil {
+		t.Error("Close is not dummy!")
+	}
+
+	if conn.Err() != nil {
+		t.Error("Err is not dummy!")
+	}
+
+	if conn.Flush() != nil {
+		t.Error("Flush is not dummy!")
 	}
 }

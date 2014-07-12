@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -22,7 +23,7 @@ func init() {
 // command execution
 type Cmd struct {
 	Response interface{} // Response to send back when this command/arguments are called
-	Err      error       // Error to send back when this command/arguments are called
+	Error    error       // Error to send back when this command/arguments are called
 }
 
 // Command register a command in the mock system using the same arguments of a Do or Send commands.
@@ -38,7 +39,7 @@ func Command(commandName string, args ...interface{}) *Cmd {
 // for the same command/arguments
 func (c *Cmd) Expect(response interface{}) {
 	c.Response = response
-	c.Err = nil
+	c.Error = nil
 }
 
 // ExpectMap works in the same way of the Expect command, but has a key/value input to make it
@@ -51,26 +52,26 @@ func (c *Cmd) ExpectMap(response map[string]string) {
 	}
 
 	c.Response = values
-	c.Err = nil
+	c.Error = nil
 }
 
 // ExpectError allows you to force an error when executing a command/arguments
 func (c *Cmd) ExpectError(err error) {
 	c.Response = nil
-	c.Err = err
+	c.Error = err
 }
 
 // generateKey build an id for the command/arguments to make it easier to find in the registered
 // commands
 func generateKey(commandName string, args []interface{}) string {
-	key := commandName
+	key := strings.TrimSpace(commandName)
 
 	for _, arg := range args {
 		switch arg := arg.(type) {
 		case string:
-			key += " " + arg
+			key += " " + strings.TrimSpace(arg)
 		case []byte:
-			key += " " + string(arg)
+			key += " " + strings.TrimSpace(string(arg))
 		case int:
 			key += " " + strconv.Itoa(arg)
 		case int64:
@@ -88,9 +89,10 @@ func generateKey(commandName string, args []interface{}) string {
 		default:
 			var buf bytes.Buffer
 			fmt.Fprint(&buf, arg)
-			key += " " + buf.String()
+			key += " " + strings.TrimSpace(buf.String())
 		}
 	}
 
+	key = strings.ToUpper(key)
 	return key
 }

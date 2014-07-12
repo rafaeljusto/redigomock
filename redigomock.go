@@ -49,7 +49,7 @@ func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, er
 			commandName, args)
 	}
 
-	return cmd.Response, cmd.Err
+	return cmd.Response, cmd.Error
 }
 
 // Send stores the command and arguments to be executed later (by the Receive function) in a first-
