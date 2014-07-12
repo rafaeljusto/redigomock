@@ -2,7 +2,7 @@
 // Use of this source code is governed by a GPL
 // license that can be found in the LICENSE file.
 
-// redigomock is a mock for redigo library (redis client)
+// Package redigomock is a mock for redigo library (redis client)
 package redigomock
 
 import (
@@ -45,7 +45,7 @@ func (c Conn) Err() error {
 func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
 	cmd, found := commands[generateKey(commandName, args)]
 	if !found {
-		return nil, fmt.Errorf("Command %s with arguments %v not registered in redigomock library!",
+		return nil, fmt.Errorf("command %s with arguments %v not registered in redigomock library",
 			commandName, args)
 	}
 
@@ -75,7 +75,7 @@ func (c Conn) Flush() error {
 // processed by Receive call. It will work as the Do method.
 func (c Conn) Receive() (reply interface{}, err error) {
 	if len(queue) == 0 {
-		return nil, fmt.Errorf("No more items")
+		return nil, fmt.Errorf("no more items")
 	}
 
 	reply, err = c.Do(queue[0].commandName, queue[0].args...)

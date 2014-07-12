@@ -69,7 +69,7 @@ func TestDoCommand(t *testing.T) {
 }
 
 func TestDoCommandWithError(t *testing.T) {
-	Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulated error!"))
+	Command("HGETALL", "person:1").ExpectError(fmt.Errorf("simulated error"))
 
 	_, err := RetrievePerson(NewConn(), "1")
 	if err == nil {
@@ -115,7 +115,7 @@ func TestSendFlushReceiveWithError(t *testing.T) {
 		"name": "Ms. Jennifer",
 		"age":  "28",
 	})
-	Command("HGETALL", "person:2").ExpectError(fmt.Errorf("Simulated error!"))
+	Command("HGETALL", "person:2").ExpectError(fmt.Errorf("simulated error"))
 
 	_, err := RetrievePeople(NewConn(), []string{"1", "2", "3"})
 	if err == nil {
