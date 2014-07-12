@@ -89,7 +89,7 @@ func TestExpectMap(t *testing.T) {
 }
 
 func TestExpectError(t *testing.T) {
-	Command("HGETALL").ExpectError(fmt.Errorf("Error!"))
+	Command("HGETALL").ExpectError(fmt.Errorf("error"))
 
 	cmd, exists := commands["HGETALL"]
 	if !exists {
@@ -100,7 +100,7 @@ func TestExpectError(t *testing.T) {
 		t.Fatal("Error not defined")
 	}
 
-	if cmd.Error.Error() != "Error!" {
+	if cmd.Error.Error() != "error" {
 		t.Fatal("Storing wrong error")
 	}
 }
