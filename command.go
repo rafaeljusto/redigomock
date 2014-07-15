@@ -34,6 +34,14 @@ func Command(commandName string, args ...interface{}) *Cmd {
 	return &cmd
 }
 
+// GenericCommand register a command withot arguments. If a command with arguments doesn't match
+// with any registered command, it will look for generic commands before throwing an error
+func GenericCommand(commandName string) *Cmd {
+	var cmd Cmd
+	commands[generateKey(commandName, nil)] = &cmd
+	return &cmd
+}
+
 // Expect sets a response for this command. Everytime a Do or Receive methods are executed for a
 // registered command this response or error will be returned. You cannot set a response and a error
 // for the same command/arguments

@@ -10,9 +10,33 @@ import (
 )
 
 func TestCommand(t *testing.T) {
-	Command("HGETALL")
+	commands = map[string]*Cmd{}
+
+	Command("HGETALL", "a", "b", "c")
 	if len(commands) != 1 {
-		t.Fatal("Did not registered the command")
+		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(commands))
+	}
+
+	cmd, exists := commands["HGETALL a b c"]
+	if !exists {
+		t.Fatal("Wrong key defined for command")
+	}
+
+	if cmd.Response != nil {
+		t.Error("Response defined without any call")
+	}
+
+	if cmd.Error != nil {
+		t.Error("Error defined without any call")
+	}
+}
+
+func TestGenericCommand(t *testing.T) {
+	commands = map[string]*Cmd{}
+
+	GenericCommand("HGETALL")
+	if len(commands) != 1 {
+		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(commands))
 	}
 
 	cmd, exists := commands["HGETALL"]
@@ -30,6 +54,8 @@ func TestCommand(t *testing.T) {
 }
 
 func TestExpect(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	Command("HGETALL").Expect("test")
 	cmd, exists := commands["HGETALL"]
 	if !exists {
@@ -51,6 +77,8 @@ func TestExpect(t *testing.T) {
 }
 
 func TestExpectMap(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	Command("HGETALL").ExpectMap(map[string]string{
 		"key1": "value1",
 	})
@@ -89,6 +117,8 @@ func TestExpectMap(t *testing.T) {
 }
 
 func TestExpectMapReplace(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	Command("HGETALL").ExpectMap(map[string]string{
 		"key1": "value1",
 	})
@@ -131,6 +161,8 @@ func TestExpectMapReplace(t *testing.T) {
 }
 
 func TestExpectError(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	Command("HGETALL").ExpectError(fmt.Errorf("error"))
 
 	cmd, exists := commands["HGETALL"]

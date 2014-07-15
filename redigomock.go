@@ -45,8 +45,12 @@ func (c Conn) Err() error {
 func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
 	cmd, found := commands[generateKey(commandName, args)]
 	if !found {
-		return nil, fmt.Errorf("command %s with arguments %v not registered in redigomock library",
-			commandName, args)
+		// Didn't find a specific command, try to get a generic one
+		cmd, found = commands[generateKey(commandName, nil)]
+		if !found {
+			return nil, fmt.Errorf("command %s with arguments %v not registered in redigomock library",
+				commandName, args)
+		}
 	}
 
 	return cmd.Response, cmd.Error
@@ -81,4 +85,14 @@ func (c Conn) Receive() (reply interface{}, err error) {
 	reply, err = c.Do(queue[0].commandName, queue[0].args...)
 	queue = queue[1:]
 	return
+}
+
+// Remove all registered commands and empty the queue
+func Clear() {
+	queue = []struct {
+		commandName string
+		args        []interface{}
+	}{}
+
+	commands = map[string]*Cmd{}
 }

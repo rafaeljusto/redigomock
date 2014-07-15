@@ -49,6 +49,8 @@ func RetrievePeople(conn redis.Conn, ids []string) ([]Person, error) {
 }
 
 func TestDoCommand(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
@@ -68,7 +70,58 @@ func TestDoCommand(t *testing.T) {
 	}
 }
 
+func TestDoGenericCommand(t *testing.T) {
+	commands = map[string]*Cmd{}
+
+	GenericCommand("HGETALL").ExpectMap(map[string]string{
+		"name": "Mr. Johson",
+		"age":  "42",
+	})
+
+	person, err := RetrievePerson(NewConn(), "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if person.Name != "Mr. Johson" {
+		t.Errorf("Invalid name. Expected 'Mr. Johson' and got '%s'", person.Name)
+	}
+
+	if person.Age != 42 {
+		t.Errorf("Invalid age. Expected '42' and got '%d'")
+	}
+}
+
+func TestDoCommandWithGeneric(t *testing.T) {
+	commands = map[string]*Cmd{}
+
+	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+		"name": "Mr. Johson",
+		"age":  "42",
+	})
+
+	GenericCommand("HGETALL").ExpectMap(map[string]string{
+		"name": "Mr. Mark",
+		"age":  "32",
+	})
+
+	person, err := RetrievePerson(NewConn(), "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if person.Name != "Mr. Johson" {
+		t.Errorf("Invalid name. Expected 'Mr. Johson' and got '%s'", person.Name)
+	}
+
+	if person.Age != 42 {
+		t.Errorf("Invalid age. Expected '42' and got '%d'")
+	}
+}
+
 func TestDoCommandWithError(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	Command("HGETALL", "person:1").ExpectError(fmt.Errorf("simulated error"))
 
 	_, err := RetrievePerson(NewConn(), "1")
@@ -79,6 +132,8 @@ func TestDoCommandWithError(t *testing.T) {
 }
 
 func TestDoCommandWithUnexpectedCommand(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	_, err := RetrievePerson(NewConn(), "X")
 	if err == nil {
 		t.Error("Should detect a command not registered!")
@@ -87,6 +142,8 @@ func TestDoCommandWithUnexpectedCommand(t *testing.T) {
 }
 
 func TestSendFlushReceive(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
@@ -120,6 +177,8 @@ func TestSendFlushReceive(t *testing.T) {
 }
 
 func TestSendFlushReceiveWithError(t *testing.T) {
+	commands = map[string]*Cmd{}
+
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
@@ -149,5 +208,36 @@ func TestDummyFunctions(t *testing.T) {
 
 	if conn.Flush() != nil {
 		t.Error("Flush is not dummy!")
+	}
+}
+
+func TestClear(t *testing.T) {
+	commands = map[string]*Cmd{}
+
+	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+		"name": "Mr. Johson",
+		"age":  "42",
+	})
+	Command("HGETALL", "person:2").ExpectMap(map[string]string{
+		"name": "Ms. Jennifer",
+		"age":  "28",
+	})
+	GenericCommand("HGETALL").ExpectMap(map[string]string{
+		"name": "Ms. Mark",
+		"age":  "32",
+	})
+
+	conn := NewConn()
+	conn.Send("HGETALL", "person:1")
+	conn.Send("HGETALL", "person:2")
+
+	Clear()
+
+	if len(commands) > 0 {
+		t.Error("Clear function not clearing registered commands")
+	}
+
+	if len(queue) > 0 {
+		t.Error("Clear function not clearing the queue")
 	}
 }
