@@ -88,6 +88,48 @@ func TestExpectMap(t *testing.T) {
 	}
 }
 
+func TestExpectMapReplace(t *testing.T) {
+	Command("HGETALL").ExpectMap(map[string]string{
+		"key1": "value1",
+	})
+
+	Command("HGETALL").ExpectMap(map[string]string{
+		"key2": "value2",
+	})
+
+	cmd, exists := commands["HGETALL"]
+	if !exists {
+		t.Fatal("Wrong key defined for command")
+	}
+
+	if cmd.Response == nil {
+		t.Fatal("Response not defined")
+	}
+
+	values, ok := cmd.Response.([]interface{})
+	if !ok {
+		t.Fatal("Not storing response in the correct type")
+	}
+
+	expected := []string{"key2", "value2"}
+	if len(values) != len(expected) {
+		t.Fatal("Map values not stored properly")
+	}
+
+	for i := 0; i < len(expected); i++ {
+		value, ok := values[i].([]byte)
+		if ok {
+			if string(value) != expected[i] {
+				t.Errorf("Changing the response content. Expected '%s' and got '%s'",
+					expected[i], string(value))
+			}
+
+		} else {
+			t.Error("Not storing the map content in byte format")
+		}
+	}
+}
+
 func TestExpectError(t *testing.T) {
 	Command("HGETALL").ExpectError(fmt.Errorf("error"))
 
