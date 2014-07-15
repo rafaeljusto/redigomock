@@ -153,7 +153,7 @@ func TestGenerateKey(t *testing.T) {
 			}{
 				Field: "test",
 			}},
-			Expected: "HGETALL {TEST}",
+			Expected: "HGETALL {test}",
 		},
 	}
 

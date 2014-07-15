@@ -65,6 +65,7 @@ func (c *Cmd) ExpectError(err error) {
 // commands
 func generateKey(commandName string, args []interface{}) string {
 	key := strings.TrimSpace(commandName)
+	key = strings.ToUpper(key)
 
 	for _, arg := range args {
 		switch arg := arg.(type) {
@@ -93,6 +94,5 @@ func generateKey(commandName string, args []interface{}) string {
 		}
 	}
 
-	key = strings.ToUpper(key)
 	return key
 }
