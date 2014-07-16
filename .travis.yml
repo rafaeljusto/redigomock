@@ -3,6 +3,10 @@ language: go
 go:
   - 1.3
 
+env:
+	global:
+		- secure: "jU+Vi9lC8F7WNiGtu/0lGTXJR0tInyqJvt3oXYVvc2oOl7u8U3Fi5YW9UBRSMq4YI8CGbJkyfesNhMpkOqgdOqkdALCOvxFl+z2tFrLjEU83QBvwkZBWXSMrNkPJzNA/YD1zGABVuAc/yf9aA9yUQ0sWOGZmengDU7trnk94LuY="
+
 install:
   - go get github.com/garyburd/redigo/redis
   - go get code.google.com/p/go.tools/cmd/cover
@@ -18,5 +22,3 @@ notifications:
       - rafael@justo.net.br
     on_success: change
     on_failure: always
-
-secure: "jU+Vi9lC8F7WNiGtu/0lGTXJR0tInyqJvt3oXYVvc2oOl7u8U3Fi5YW9UBRSMq4YI8CGbJkyfesNhMpkOqgdOqkdALCOvxFl+z2tFrLjEU83QBvwkZBWXSMrNkPJzNA/YD1zGABVuAc/yf9aA9yUQ0sWOGZmengDU7trnk94LuY="
