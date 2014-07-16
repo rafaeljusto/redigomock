@@ -3,7 +3,6 @@ redigomock
 
 [![Build Status](https://travis-ci.org/rafaeljusto/redigomock.png?branch=master)](https://travis-ci.org/rafaeljusto/redigomock)
 [![GoDoc](https://godoc.org/github.com/rafaeljusto/redigomock?status.png)](https://godoc.org/github.com/rafaeljusto/redigomock)
-[![Coverage Status](https://coveralls.io/repos/rafaeljusto/redigomock/badge.png)](https://coveralls.io/r/rafaeljusto/redigomock)
 
 Easy way to unit test projects using [redigo library](https://github.com/garyburd/redigo) (Redis client in go)
 
