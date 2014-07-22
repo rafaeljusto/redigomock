@@ -16,6 +16,8 @@ go get -u github.com/rafaeljusto/redigomock
 usage
 -----
 
+Here is an example of using redigomock, for more information please check the [API documentation](https://godoc.org/github.com/rafaeljusto/redigomock).
+
 ```go
 package main
 
