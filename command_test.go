@@ -248,3 +248,59 @@ func TestRemoveRelatedCommands(t *testing.T) {
 		t.Errorf("Not removing related commands. Expected '4' and got '%d'", len(commands))
 	}
 }
+
+func TestEqual(t *testing.T) {
+	data := []struct {
+		Cmd         *Cmd
+		CommandName string
+		Args        []interface{}
+		Equal       bool
+	}{
+		{
+			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			CommandName: "HGETALL",
+			Args:        []interface{}{"a", "b", "c"},
+			Equal:       true,
+		},
+		{
+			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			CommandName: "HGETALL",
+			Args:        []interface{}{"c", "b", "a"},
+			Equal:       true,
+		},
+		{
+			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			CommandName: "HGETALL",
+			Args:        []interface{}{"a", "b"},
+			Equal:       false,
+		},
+		{
+			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b"}},
+			CommandName: "HGETALL",
+			Args:        []interface{}{"a", "b", "c"},
+			Equal:       false,
+		},
+		{
+			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			CommandName: "HSETALL",
+			Args:        []interface{}{"a", "b", "c"},
+			Equal:       false,
+		},
+		{
+			Cmd:         &Cmd{Name: "HSETALL", Args: nil},
+			CommandName: "HSETALL",
+			Args:        nil,
+			Equal:       true,
+		},
+	}
+
+	for i, item := range data {
+		e := equal(item.CommandName, item.Args, item.Cmd)
+		if e != item.Equal && item.Equal {
+			t.Errorf("Expected commands to be equal for data item '%d'", i)
+
+		} else if e != item.Equal && !item.Equal {
+			t.Errorf("Expected commands to be different for data item '%d'", i)
+		}
+	}
+}

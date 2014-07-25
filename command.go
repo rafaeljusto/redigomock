@@ -5,7 +5,7 @@
 package redigomock
 
 var (
-	commands []*Cmd // global variable that store all registered commands
+	commands []*Cmd // Global variable that stores all registered commands
 )
 
 // Cmd stores the registered information about a command to return it later when request by a
@@ -73,29 +73,7 @@ func (c *Cmd) ExpectError(err error) {
 // arguments. If the command is not found nil is returned
 func find(commandName string, args []interface{}) *Cmd {
 	for _, cmd := range commands {
-		if cmd.Name != commandName || len(cmd.Args) != len(args) {
-			continue
-		}
-
-		equal := true
-		for i := range cmd.Args {
-			found := false
-
-			// Allow arguments in different order
-			for j := range args {
-				if cmd.Args[i] == args[j] {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				equal = false
-				break
-			}
-		}
-
-		if equal {
+		if equal(commandName, args, cmd) {
 			return cmd
 		}
 	}
@@ -109,33 +87,37 @@ func removeRelatedCommands(commandName string, args []interface{}) {
 	var unique []*Cmd
 
 	for _, cmd := range commands {
-		if cmd.Name != commandName || len(cmd.Args) != len(args) {
-			unique = append(unique, cmd)
-			continue
-		}
-
-		equal := true
-		for i := range cmd.Args {
-			found := false
-
-			// Allow arguments in different order
-			for j := range args {
-				if cmd.Args[i] == args[j] {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				equal = false
-				break
-			}
-		}
-
-		if !equal {
+		// New array will contain only commands that are not related to the given one
+		if !equal(commandName, args, cmd) {
 			unique = append(unique, cmd)
 		}
 	}
 
 	commands = unique
+}
+
+// equal verify if a command/argumets is related to a registered command. We allow arguments in any
+// order so long they have a match
+func equal(commandName string, args []interface{}, cmd *Cmd) bool {
+	if cmd.Name != commandName || len(cmd.Args) != len(args) {
+		return false
+	}
+
+	for i := range cmd.Args {
+		found := false
+
+		// Allow arguments in different order
+		for j := range args {
+			if cmd.Args[i] == args[j] {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
