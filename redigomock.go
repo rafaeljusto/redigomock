@@ -42,11 +42,10 @@ func (c Conn) Err() error {
 // command name and arguments, if so the corresponding response or error is returned. If no
 // registered command is found an error is returned
 func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
-	cmd, found := commands[generateKey(commandName, args)]
-	if !found {
+	cmd := find(commandName, args)
+	if cmd == nil {
 		// Didn't find a specific command, try to get a generic one
-		cmd, found = commands[generateKey(commandName, nil)]
-		if !found {
+		if cmd = find(commandName, nil); cmd == nil {
 			return nil, fmt.Errorf("command %s with arguments %v not registered in redigomock library",
 				commandName, args)
 		}
@@ -93,5 +92,5 @@ func Clear() {
 		args        []interface{}
 	}{}
 
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 }

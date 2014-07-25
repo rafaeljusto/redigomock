@@ -30,12 +30,12 @@
 //  redigomock.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Low level error!"))
 //
 // Sometimes you will want to register a command regardless the arguments, and you can do it with
-// the method GenericCommand (mainly with the HMSET)
+// the method GenericCommand (mainly with the HMSET).
 //  redigomock.GenericCommand("HMSET").Expect("ok")
 //
 // All commands are registered in a global variable, so they will be there until all your test cases
-// ends. So for good test writing you should in the beginning of each test case clear the mock
-// states.
+// ends. So for good practice in test writing you should in the beginning of each test case clear
+// the mock states.
 //  redigomock.Clear()
 //
 // Let's see a full test example. Imagine a Person structure and a function that pick up this

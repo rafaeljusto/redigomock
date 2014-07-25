@@ -49,7 +49,7 @@ func RetrievePeople(conn redis.Conn, ids []string) ([]Person, error) {
 }
 
 func TestDoCommand(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
@@ -71,7 +71,7 @@ func TestDoCommand(t *testing.T) {
 }
 
 func TestDoGenericCommand(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	GenericCommand("HGETALL").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
@@ -93,7 +93,7 @@ func TestDoGenericCommand(t *testing.T) {
 }
 
 func TestDoCommandWithGeneric(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
@@ -115,12 +115,12 @@ func TestDoCommandWithGeneric(t *testing.T) {
 	}
 
 	if person.Age != 42 {
-		t.Errorf("Invalid age. Expected '42' and got '%d'")
+		t.Errorf("Invalid age. Expected '42' and got '%d'", person.Age)
 	}
 }
 
 func TestDoCommandWithError(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL", "person:1").ExpectError(fmt.Errorf("simulated error"))
 
@@ -132,7 +132,7 @@ func TestDoCommandWithError(t *testing.T) {
 }
 
 func TestDoCommandWithUnexpectedCommand(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	_, err := RetrievePerson(NewConn(), "X")
 	if err == nil {
@@ -142,7 +142,7 @@ func TestDoCommandWithUnexpectedCommand(t *testing.T) {
 }
 
 func TestSendFlushReceive(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
@@ -177,7 +177,7 @@ func TestSendFlushReceive(t *testing.T) {
 }
 
 func TestSendFlushReceiveWithError(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
@@ -212,7 +212,7 @@ func TestDummyFunctions(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",

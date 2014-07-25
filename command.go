@@ -4,42 +4,42 @@
 
 package redigomock
 
-import (
-	"bytes"
-	"fmt"
-	"strconv"
-	"strings"
-)
-
 var (
-	commands map[string]*Cmd
+	commands []*Cmd // global variable that store all registered commands
 )
-
-func init() {
-	commands = make(map[string]*Cmd)
-}
 
 // Cmd stores the registered information about a command to return it later when request by a
 // command execution
 type Cmd struct {
-	Response interface{} // Response to send back when this command/arguments are called
-	Error    error       // Error to send back when this command/arguments are called
+	Name     string        // Name of the command
+	Args     []interface{} // Arguments of the command
+	Response interface{}   // Response to send back when this command/arguments are called
+	Error    error         // Error to send back when this command/arguments are called
 }
 
 // Command register a command in the mock system using the same arguments of a Do or Send commands.
 // It will return a registered command object where you can set the response or error
 func Command(commandName string, args ...interface{}) *Cmd {
-	var cmd Cmd
-	commands[generateKey(commandName, args)] = &cmd
-	return &cmd
+	cmd := &Cmd{
+		Name: commandName,
+		Args: args,
+	}
+
+	removeRelatedCommands(commandName, args)
+	commands = append(commands, cmd)
+	return cmd
 }
 
-// GenericCommand register a command withot arguments. If a command with arguments doesn't match
+// GenericCommand register a command without arguments. If a command with arguments doesn't match
 // with any registered command, it will look for generic commands before throwing an error
 func GenericCommand(commandName string) *Cmd {
-	var cmd Cmd
-	commands[generateKey(commandName, nil)] = &cmd
-	return &cmd
+	cmd := &Cmd{
+		Name: commandName,
+	}
+
+	removeRelatedCommands(commandName, nil)
+	commands = append(commands, cmd)
+	return cmd
 }
 
 // Expect sets a response for this command. Everytime a Do or Receive methods are executed for a
@@ -69,38 +69,73 @@ func (c *Cmd) ExpectError(err error) {
 	c.Error = err
 }
 
-// generateKey build an id for the command/arguments to make it easier to find in the registered
-// commands
-func generateKey(commandName string, args []interface{}) string {
-	key := strings.TrimSpace(commandName)
-	key = strings.ToUpper(key)
+// find will scan the registered commands, looking for the first command with the same name and
+// arguments. If the command is not found nil is returned
+func find(commandName string, args []interface{}) *Cmd {
+	for _, cmd := range commands {
+		if cmd.Name != commandName || len(cmd.Args) != len(args) {
+			continue
+		}
 
-	for _, arg := range args {
-		switch arg := arg.(type) {
-		case string:
-			key += " " + strings.TrimSpace(arg)
-		case []byte:
-			key += " " + strings.TrimSpace(string(arg))
-		case int:
-			key += " " + strconv.Itoa(arg)
-		case int64:
-			key += " " + strconv.FormatInt(arg, 10)
-		case float64:
-			key += " " + strconv.FormatFloat(arg, 'g', -1, 64)
-		case bool:
-			if arg {
-				key += " 1"
-			} else {
-				key += " 0"
+		equal := true
+		for i := range cmd.Args {
+			found := false
+
+			// Allow arguments in different order
+			for j := range args {
+				if cmd.Args[i] == args[j] {
+					found = true
+					break
+				}
 			}
-		case nil:
-			key += " "
-		default:
-			var buf bytes.Buffer
-			fmt.Fprint(&buf, arg)
-			key += " " + strings.TrimSpace(buf.String())
+
+			if !found {
+				equal = false
+				break
+			}
+		}
+
+		if equal {
+			return cmd
 		}
 	}
 
-	return key
+	return nil
+}
+
+// removeRelatedCommands verify if a command is already registered, removing any command already
+// registered with the same name and arguments. This should avoid duplicated mocked commands
+func removeRelatedCommands(commandName string, args []interface{}) {
+	var unique []*Cmd
+
+	for _, cmd := range commands {
+		if cmd.Name != commandName || len(cmd.Args) != len(args) {
+			unique = append(unique, cmd)
+			continue
+		}
+
+		equal := true
+		for i := range cmd.Args {
+			found := false
+
+			// Allow arguments in different order
+			for j := range args {
+				if cmd.Args[i] == args[j] {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				equal = false
+				break
+			}
+		}
+
+		if !equal {
+			unique = append(unique, cmd)
+		}
+	}
+
+	commands = unique
 }

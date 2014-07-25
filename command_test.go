@@ -10,16 +10,36 @@ import (
 )
 
 func TestCommand(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL", "a", "b", "c")
 	if len(commands) != 1 {
 		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(commands))
 	}
 
-	cmd, exists := commands["HGETALL a b c"]
-	if !exists {
-		t.Fatal("Wrong key defined for command")
+	cmd := commands[0]
+
+	if cmd.Name != "HGETALL" {
+		t.Error("Wrong name defined for command")
+	}
+
+	if len(cmd.Args) != 3 {
+		t.Fatal("Wrong arguments defined for command")
+	}
+
+	arg := cmd.Args[0].(string)
+	if arg != "a" {
+		t.Errorf("Wrong argument defined for command. Expected 'a' and got '%s'", arg)
+	}
+
+	arg = cmd.Args[1].(string)
+	if arg != "b" {
+		t.Errorf("Wrong argument defined for command. Expected 'b' and got '%s'", arg)
+	}
+
+	arg = cmd.Args[2].(string)
+	if arg != "c" {
+		t.Errorf("Wrong argument defined for command. Expected 'c' and got '%s'", arg)
 	}
 
 	if cmd.Response != nil {
@@ -32,16 +52,21 @@ func TestCommand(t *testing.T) {
 }
 
 func TestGenericCommand(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	GenericCommand("HGETALL")
 	if len(commands) != 1 {
 		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(commands))
 	}
 
-	cmd, exists := commands["HGETALL"]
-	if !exists {
-		t.Fatal("Wrong key defined for command")
+	cmd := commands[0]
+
+	if cmd.Name != "HGETALL" {
+		t.Error("Wrong name defined for command")
+	}
+
+	if len(cmd.Args) > 0 {
+		t.Error("Arguments defined for command when they shouldn't")
 	}
 
 	if cmd.Response != nil {
@@ -54,13 +79,14 @@ func TestGenericCommand(t *testing.T) {
 }
 
 func TestExpect(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL").Expect("test")
-	cmd, exists := commands["HGETALL"]
-	if !exists {
-		t.Fatal("Wrong key defined for command")
+	if len(commands) != 1 {
+		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(commands))
 	}
+
+	cmd := commands[0]
 
 	if cmd.Response == nil {
 		t.Fatal("Response not defined")
@@ -77,16 +103,17 @@ func TestExpect(t *testing.T) {
 }
 
 func TestExpectMap(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL").ExpectMap(map[string]string{
 		"key1": "value1",
 	})
 
-	cmd, exists := commands["HGETALL"]
-	if !exists {
-		t.Fatal("Wrong key defined for command")
+	if len(commands) != 1 {
+		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(commands))
 	}
+
+	cmd := commands[0]
 
 	if cmd.Response == nil {
 		t.Fatal("Response not defined")
@@ -117,7 +144,7 @@ func TestExpectMap(t *testing.T) {
 }
 
 func TestExpectMapReplace(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL").ExpectMap(map[string]string{
 		"key1": "value1",
@@ -127,10 +154,11 @@ func TestExpectMapReplace(t *testing.T) {
 		"key2": "value2",
 	})
 
-	cmd, exists := commands["HGETALL"]
-	if !exists {
-		t.Fatal("Wrong key defined for command")
+	if len(commands) != 1 {
+		t.Fatalf("Wrong number of registered commands. Expected '1' and got '%d'", len(commands))
 	}
+
+	cmd := commands[0]
 
 	if cmd.Response == nil {
 		t.Fatal("Response not defined")
@@ -161,14 +189,15 @@ func TestExpectMapReplace(t *testing.T) {
 }
 
 func TestExpectError(t *testing.T) {
-	commands = map[string]*Cmd{}
+	commands = []*Cmd{}
 
 	Command("HGETALL").ExpectError(fmt.Errorf("error"))
 
-	cmd, exists := commands["HGETALL"]
-	if !exists {
-		t.Fatal("Wrong key defined for command")
+	if len(commands) != 1 {
+		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(commands))
 	}
+
+	cmd := commands[0]
 
 	if cmd.Error == nil {
 		t.Fatal("Error not defined")
@@ -179,62 +208,43 @@ func TestExpectError(t *testing.T) {
 	}
 }
 
-func TestGenerateKey(t *testing.T) {
-	data := []struct {
-		CommandName string
-		Args        []interface{}
-		Expected    string
-	}{
-		{
-			CommandName: "  hgetall  ",
-			Args:        []interface{}{"  A  ", " B", "C "},
-			Expected:    "HGETALL A B C",
-		},
-		{
-			CommandName: "HGETALL",
-			Args:        []interface{}{[]byte("A"), []byte("B"), []byte("C")},
-			Expected:    "HGETALL A B C",
-		},
-		{
-			CommandName: "HGETALL",
-			Args:        []interface{}{1, 2, 3},
-			Expected:    "HGETALL 1 2 3",
-		},
-		{
-			CommandName: "HGETALL",
-			Args:        []interface{}{int64(1), int64(2), int64(3)},
-			Expected:    "HGETALL 1 2 3",
-		},
-		{
-			CommandName: "HGETALL",
-			Args:        []interface{}{1.1, 2.2, 3.3},
-			Expected:    "HGETALL 1.1 2.2 3.3",
-		},
-		{
-			CommandName: "HGETALL",
-			Args:        []interface{}{true, false},
-			Expected:    "HGETALL 1 0",
-		},
-		{
-			CommandName: "HGETALL",
-			Args:        []interface{}{nil},
-			Expected:    "HGETALL ",
-		},
-		{
-			CommandName: "HGETALL",
-			Args: []interface{}{struct {
-				Field string
-			}{
-				Field: "test",
-			}},
-			Expected: "HGETALL {test}",
-		},
+func TestFind(t *testing.T) {
+	commands = []*Cmd{}
+
+	Command("HGETALL", "a", "b", "c")
+
+	if find("HGETALL", []interface{}{"a"}) != nil {
+		t.Error("Returning command without comparing all registered arguments")
 	}
 
-	for _, item := range data {
-		key := generateKey(item.CommandName, item.Args)
-		if key != item.Expected {
-			t.Errorf("Error in key generation. Expected '%s' and got '%s'", item.Expected, key)
-		}
+	if find("HGETALL", []interface{}{"a", "b", "c", "d"}) != nil {
+		t.Error("Returning command without comparing all informed arguments")
+	}
+
+	if find("HSETALL", []interface{}{"a", "b", "c"}) != nil {
+		t.Error("Returning command when the name is different")
+	}
+
+	if find("HGETALL", []interface{}{"c", "b", "a"}) == nil {
+		t.Error("Could not find command with arguments in a different order")
+	}
+
+	if find("HGETALL", []interface{}{"a", "b", "c"}) == nil {
+		t.Error("Could not find command with arguments in the same order")
+	}
+}
+
+func TestRemoveRelatedCommands(t *testing.T) {
+	commands = []*Cmd{}
+
+	Command("HGETALL", "a", "b", "c")
+	Command("HGETALL", "a", "b", "c")
+	Command("HGETALL", "c", "b", "a")
+	Command("HGETALL")
+	Command("HSETALL", "c", "b", "a")
+	Command("HSETALL")
+
+	if len(commands) != 4 {
+		t.Errorf("Not removing related commands. Expected '4' and got '%d'", len(commands))
 	}
 }
