@@ -66,7 +66,7 @@ func TestDoCommand(t *testing.T) {
 	}
 
 	if person.Age != 42 {
-		t.Errorf("Invalid age. Expected '42' and got '%d'")
+		t.Errorf("Invalid age. Expected '42' and got '%d'", person.Age)
 	}
 }
 
@@ -88,7 +88,7 @@ func TestDoGenericCommand(t *testing.T) {
 	}
 
 	if person.Age != 42 {
-		t.Errorf("Invalid age. Expected '42' and got '%d'")
+		t.Errorf("Invalid age. Expected '42' and got '%d'", person.Age)
 	}
 }
 
