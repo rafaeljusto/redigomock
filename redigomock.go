@@ -46,7 +46,7 @@ func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, er
 	if cmd == nil {
 		// Didn't find a specific command, try to get a generic one
 		if cmd = find(commandName, nil); cmd == nil {
-			return nil, fmt.Errorf("command %s with arguments %v not registered in redigomock library",
+			return nil, fmt.Errorf("command %s with arguments %#v not registered in redigomock library",
 				commandName, args)
 		}
 	}
