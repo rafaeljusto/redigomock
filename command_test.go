@@ -263,6 +263,12 @@ func TestEqual(t *testing.T) {
 			Equal:       true,
 		},
 		{
+			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", []byte("abcdef"), "c"}},
+			CommandName: "HGETALL",
+			Args:        []interface{}{"a", []byte("abcdef"), "c"},
+			Equal:       true,
+		},
+		{
 			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
 			CommandName: "HGETALL",
 			Args:        []interface{}{"c", "b", "a"},

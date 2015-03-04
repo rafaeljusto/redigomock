@@ -4,6 +4,8 @@
 
 package redigomock
 
+import "reflect"
+
 var (
 	commands []*Cmd // Global variable that stores all registered commands
 )
@@ -108,7 +110,7 @@ func equal(commandName string, args []interface{}, cmd *Cmd) bool {
 
 		// Allow arguments in different order
 		for j := range args {
-			if cmd.Args[i] == args[j] {
+			if reflect.DeepEqual(cmd.Args[i], args[j]) {
 				found = true
 				break
 			}
