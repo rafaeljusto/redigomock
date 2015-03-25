@@ -4,7 +4,11 @@
 
 package redigomock
 
-import "reflect"
+import (
+	"crypto/sha1"
+	"encoding/hex"
+	"reflect"
+)
 
 var (
 	commands []*Cmd // Global variable that stores all registered commands
@@ -28,6 +32,25 @@ func Command(commandName string, args ...interface{}) *Cmd {
 	}
 
 	removeRelatedCommands(commandName, args)
+	commands = append(commands, cmd)
+	return cmd
+}
+
+func Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd {
+	h := sha1.New()
+	h.Write(scriptData)
+	sha1sum := hex.EncodeToString(h.Sum(nil))
+
+	newArgs := make([]interface{}, 2+len(args))
+	newArgs[0] = sha1sum
+	newArgs[1] = keyCount
+	copy(newArgs[2:], args)
+
+	cmd := &Cmd{
+		Name: "EVALSHA",
+		Args: newArgs,
+	}
+	removeRelatedCommands("EVALSHA", newArgs)
 	commands = append(commands, cmd)
 	return cmd
 }
