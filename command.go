@@ -36,6 +36,9 @@ func Command(commandName string, args ...interface{}) *Cmd {
 	return cmd
 }
 
+// Script registers a command in the mock system just like Command method would do
+// The first argument is a byte array with the script text, next ones are the ones
+// you would pass to redis Script.Do() method
 func Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd {
 	h := sha1.New()
 	h.Write(scriptData)
