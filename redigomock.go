@@ -6,6 +6,7 @@ package redigomock
 
 import (
 	"fmt"
+
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -85,7 +86,7 @@ func (c Conn) Receive() (reply interface{}, err error) {
 	return
 }
 
-// Clear remove all registered commands and empty the queue
+// Clear removes all registered commands and empty the queue
 func Clear() {
 	queue = []struct {
 		commandName string
