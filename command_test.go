@@ -42,12 +42,8 @@ func TestCommand(t *testing.T) {
 		t.Errorf("Wrong argument defined for command. Expected 'c' and got '%s'", arg)
 	}
 
-	if cmd.Response != nil {
+	if len(cmd.Responses) != 0 {
 		t.Error("Response defined without any call")
-	}
-
-	if cmd.Error != nil {
-		t.Error("Error defined without any call")
 	}
 }
 
@@ -69,12 +65,8 @@ func TestGenericCommand(t *testing.T) {
 		t.Error("Arguments defined for command when they shouldn't")
 	}
 
-	if cmd.Response != nil {
+	if len(cmd.Responses) != 0 {
 		t.Error("Response defined without any call")
-	}
-
-	if cmd.Error != nil {
-		t.Error("Error defined without any call")
 	}
 }
 
@@ -88,11 +80,11 @@ func TestExpect(t *testing.T) {
 
 	cmd := commands[0]
 
-	if cmd.Response == nil {
+	if cmd.Responses[0].Response == nil {
 		t.Fatal("Response not defined")
 	}
 
-	value, ok := cmd.Response.(string)
+	value, ok := cmd.Responses[0].Response.(string)
 	if !ok {
 		t.Fatal("Not storing response in the correct type")
 	}
@@ -115,11 +107,11 @@ func TestExpectMap(t *testing.T) {
 
 	cmd := commands[0]
 
-	if cmd.Response == nil {
+	if cmd.Responses[0].Response == nil {
 		t.Fatal("Response not defined")
 	}
 
-	values, ok := cmd.Response.([]interface{})
+	values, ok := cmd.Responses[0].Response.([]interface{})
 	if !ok {
 		t.Fatal("Not storing response in the correct type")
 	}
@@ -160,11 +152,11 @@ func TestExpectMapReplace(t *testing.T) {
 
 	cmd := commands[0]
 
-	if cmd.Response == nil {
+	if cmd.Responses[0].Response == nil {
 		t.Fatal("Response not defined")
 	}
 
-	values, ok := cmd.Response.([]interface{})
+	values, ok := cmd.Responses[0].Response.([]interface{})
 	if !ok {
 		t.Fatal("Not storing response in the correct type")
 	}
@@ -199,11 +191,11 @@ func TestExpectError(t *testing.T) {
 
 	cmd := commands[0]
 
-	if cmd.Error == nil {
+	if cmd.Responses[0].Error == nil {
 		t.Fatal("Error not defined")
 	}
 
-	if cmd.Error.Error() != "error" {
+	if cmd.Responses[0].Error.Error() != "error" {
 		t.Fatal("Storing wrong error")
 	}
 }

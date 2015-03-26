@@ -10,13 +10,18 @@ var (
 	commands []*Cmd // Global variable that stores all registered commands
 )
 
+// struct that represents single response from `Do` call
+type Response struct {
+	Response interface{} // Response to send back when this command/arguments are called
+	Error    error       // Error to send back when this command/arguments are called
+}
+
 // Cmd stores the registered information about a command to return it later when request by a
 // command execution
 type Cmd struct {
-	Name     string        // Name of the command
-	Args     []interface{} // Arguments of the command
-	Response interface{}   // Response to send back when this command/arguments are called
-	Error    error         // Error to send back when this command/arguments are called
+	Name      string        // Name of the command
+	Args      []interface{} // Arguments of the command
+	Responses []Response    // Slice of returned responses
 }
 
 // Command register a command in the mock system using the same arguments of a Do or Send commands.
@@ -47,28 +52,27 @@ func GenericCommand(commandName string) *Cmd {
 // Expect sets a response for this command. Everytime a Do or Receive methods are executed for a
 // registered command this response or error will be returned. You cannot set a response and a error
 // for the same command/arguments
-func (c *Cmd) Expect(response interface{}) {
-	c.Response = response
-	c.Error = nil
+func (c *Cmd) Expect(response interface{}) *Cmd {
+	c.Responses = append(c.Responses, Response{response, nil})
+	return c
 }
 
 // ExpectMap works in the same way of the Expect command, but has a key/value input to make it
 // easier to build test environments
-func (c *Cmd) ExpectMap(response map[string]string) {
+func (c *Cmd) ExpectMap(response map[string]string) *Cmd {
 	var values []interface{}
 	for key, value := range response {
 		values = append(values, []byte(key))
 		values = append(values, []byte(value))
 	}
-
-	c.Response = values
-	c.Error = nil
+	c.Responses = append(c.Responses, Response{values, nil})
+	return c
 }
 
 // ExpectError allows you to force an error when executing a command/arguments
-func (c *Cmd) ExpectError(err error) {
-	c.Response = nil
-	c.Error = err
+func (c *Cmd) ExpectError(err error) *Cmd {
+	c.Responses = append(c.Responses, Response{nil, err})
+	return c
 }
 
 // find will scan the registered commands, looking for the first command with the same name and

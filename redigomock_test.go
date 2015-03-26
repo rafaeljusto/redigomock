@@ -2,8 +2,9 @@ package redigomock
 
 import (
 	"fmt"
-	"github.com/garyburd/redigo/redis"
 	"testing"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 type Person struct {
@@ -67,6 +68,44 @@ func TestDoCommand(t *testing.T) {
 
 	if person.Age != 42 {
 		t.Errorf("Invalid age. Expected '42' and got '%d'", person.Age)
+	}
+}
+
+func TestDoCommandMultipleReturnValues(t *testing.T) {
+	commands = []*Cmd{}
+	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+		"name": "Mr. Johson",
+		"age":  "42",
+	}).ExpectMap(map[string]string{
+		"name": "Ms. Jennifer",
+		"age":  "28",
+	}).ExpectError(fmt.Errorf("simulated error"))
+
+	person, err := RetrievePerson(NewConn(), "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if person.Name != "Mr. Johson" {
+		t.Errorf("Invalid name. Expected 'Mr. Johson' and got '%s'", person.Name)
+	}
+	if person.Age != 42 {
+		t.Errorf("Invalid age. Expected '42' and got '%d'", person.Age)
+	}
+
+	person, err = RetrievePerson(NewConn(), "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if person.Name != "Ms. Jennifer" {
+		t.Errorf("Invalid name. Expected 'Mr. Johson' and got '%s'", person.Name)
+	}
+	if person.Age != 28 {
+		t.Errorf("Invalid age. Expected '28' and got '%d'", person.Age)
+	}
+
+	_, err = RetrievePerson(NewConn(), "1")
+	if err == nil {
+		t.Error("Should return an error!")
 	}
 }
 

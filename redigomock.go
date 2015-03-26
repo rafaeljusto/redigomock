@@ -6,6 +6,7 @@ package redigomock
 
 import (
 	"fmt"
+
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -50,8 +51,14 @@ func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, er
 				commandName, args)
 		}
 	}
+	if len(cmd.Responses) == 0 {
+		return nil, nil
+	} else {
+		response := cmd.Responses[0]
+		cmd.Responses = cmd.Responses[1:]
+		return response.Response, response.Error
 
-	return cmd.Response, cmd.Error
+	}
 }
 
 // Send stores the command and arguments to be executed later (by the Receive function) in a first-
