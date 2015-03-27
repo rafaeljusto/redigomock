@@ -14,7 +14,7 @@ var (
 	commands []*Cmd // Global variable that stores all registered commands
 )
 
-// struct that represents single response from `Do` call
+// Response struct that represents single response from `Do` call
 type Response struct {
 	Response interface{} // Response to send back when this command/arguments are called
 	Error    error       // Error to send back when this command/arguments are called
