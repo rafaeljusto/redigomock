@@ -180,6 +180,17 @@ func TestDoCommandWithUnexpectedCommand(t *testing.T) {
 	}
 }
 
+func TestDoCommandWithoutResponse(t *testing.T) {
+	commands = []*Cmd{}
+
+	Command("HGETALL", "person:1")
+
+	_, err := RetrievePerson(NewConn(), "1")
+	if err == nil {
+		t.Fatal("Returning an information when it shoudn't")
+	}
+}
+
 func TestSendFlushReceive(t *testing.T) {
 	commands = []*Cmd{}
 
