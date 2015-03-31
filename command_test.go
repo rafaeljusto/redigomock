@@ -13,10 +13,14 @@ import (
 
 func TestCommand(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL", "a", "b", "c")
 	if len(commands) != 1 {
 		t.Fatalf("Did not register the command. Expected '1' and got '%d'", len(commands))
+	}
+	if len(fuzzyCommands) != 0 {
+		t.Errorf("Added non fuzzy command to fuzzy command list")
 	}
 
 	cmd := commands[0]
@@ -51,6 +55,7 @@ func TestCommand(t *testing.T) {
 
 func TestScript(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	scriptData := []byte("This should be a lua script for redis")
 	h := sha1.New()
@@ -64,7 +69,7 @@ func TestScript(t *testing.T) {
 	Script(scriptData, 2, "key1", "key2", "value1") //4
 
 	if len(commands) != 5 {
-		t.Fatalf("Did not register the commands. Expected '4' and got '%d'", len(commands))
+		t.Fatalf("Did not register the commands. Expected '5' and got '%d'", len(commands))
 	}
 
 	if commands[0].Name != "EVALSHA" {
@@ -156,6 +161,7 @@ func TestScript(t *testing.T) {
 
 func TestGenericCommand(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	GenericCommand("HGETALL")
 	if len(commands) != 1 {
@@ -179,6 +185,7 @@ func TestGenericCommand(t *testing.T) {
 
 func TestExpect(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL").Expect("test")
 	if len(commands) != 1 {
@@ -203,6 +210,7 @@ func TestExpect(t *testing.T) {
 
 func TestExpectMap(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL").ExpectMap(map[string]string{
 		"key1": "value1",
@@ -244,6 +252,7 @@ func TestExpectMap(t *testing.T) {
 
 func TestExpectMapReplace(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL").ExpectMap(map[string]string{
 		"key1": "value1",
@@ -289,6 +298,7 @@ func TestExpectMapReplace(t *testing.T) {
 
 func TestExpectError(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL").ExpectError(fmt.Errorf("error"))
 
@@ -309,6 +319,7 @@ func TestExpectError(t *testing.T) {
 
 func TestFind(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL", "a", "b", "c")
 
@@ -335,6 +346,7 @@ func TestFind(t *testing.T) {
 
 func TestRemoveRelatedCommands(t *testing.T) {
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL", "a", "b", "c")
 	Command("HGETALL", "a", "b", "c")
@@ -345,6 +357,9 @@ func TestRemoveRelatedCommands(t *testing.T) {
 
 	if len(commands) != 4 {
 		t.Errorf("Not removing related commands. Expected '4' and got '%d'", len(commands))
+	}
+	if len(fuzzyCommands) != 0 {
+		t.Errorf("Length of fuzzyCommands != 0 , got %d ", len(fuzzyCommands))
 	}
 }
 

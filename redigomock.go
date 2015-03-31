@@ -101,4 +101,5 @@ func Clear() {
 	}{}
 
 	commands = []*Cmd{}
+	fuzzyCommands = []*Cmd{}
 }
