@@ -27,7 +27,7 @@ func TestFuzzyCommandMatchAnyInt(t *testing.T) {
 	}
 	for pos, element := range fuzzyCommandTestInput {
 		if retVal := fuzzyCommandMatch(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
-			t.Errorf("comparing fuzzy comand failed. Comparison between comand [%+v] and test arguments : [%v] at position %v returned %v while it should have returned %v",
+			t.Fatalf("comparing fuzzy comand failed. Comparison between comand [%#v] and test arguments : [%#v] at position %v returned %v while it should have returned %v",
 				command, element.arguments, pos, retVal, element.match)
 		}
 	}

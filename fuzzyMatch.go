@@ -28,13 +28,23 @@ func NewAnyDouble() FuzzyMatcher {
 type anyInt struct{}
 
 func (matcher anyInt) Match(input interface{}) bool {
-	return reflect.TypeOf(input).Kind() == reflect.Int
+	switch input.(type) {
+	case int, int8, int16, int32, int64, uint8, uint16, uint32, uint64:
+		return true
+	default:
+		return false
+	}
 }
 
 type anyDouble struct{}
 
 func (matcher anyDouble) Match(input interface{}) bool {
-	return reflect.TypeOf(input).Kind() == reflect.Float64
+	switch input.(type) {
+	case float32, float64:
+		return true
+	default:
+		return false
+	}
 }
 
 func fuzzyCommandMatch(commandName string, args []interface{}, cmd *Cmd) bool {

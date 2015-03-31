@@ -70,8 +70,21 @@ func Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd {
 		Name: "EVALSHA",
 		Args: newArgs,
 	}
+
 	removeRelatedCommands("EVALSHA", newArgs)
-	commands = append(commands, cmd)
+
+	isFuzzy := false
+	for _, item := range newArgs {
+		if implementsFuzzy(item) == true {
+			isFuzzy = true
+		}
+	}
+
+	if isFuzzy {
+		fuzzyCommands = append(fuzzyCommands, cmd)
+	} else {
+		commands = append(commands, cmd)
+	}
 	return cmd
 }
 
