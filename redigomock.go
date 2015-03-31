@@ -6,6 +6,7 @@ package redigomock
 
 import (
 	"fmt"
+
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -51,7 +52,14 @@ func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, er
 		}
 	}
 
-	return cmd.Response, cmd.Error
+	if len(cmd.Responses) == 0 {
+		return nil, nil
+	}
+
+	response := cmd.Responses[0]
+	cmd.Responses = cmd.Responses[1:]
+	return response.Response, response.Error
+
 }
 
 // Send stores the command and arguments to be executed later (by the Receive function) in a first-
@@ -85,7 +93,7 @@ func (c Conn) Receive() (reply interface{}, err error) {
 	return
 }
 
-// Clear remove all registered commands and empty the queue
+// Clear removes all registered commands and empty the queue
 func Clear() {
 	queue = []struct {
 		commandName string
