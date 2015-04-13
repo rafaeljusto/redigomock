@@ -25,6 +25,11 @@ func NewAnyDouble() FuzzyMatcher {
 	return anyDouble{}
 }
 
+//NewAnyData returns a FuzzyMatcher instance matching every data passed as an arguments (returnes true by default)
+func NewAnyData() FuzzyMatcher {
+	return anyData{}
+}
+
 type anyInt struct{}
 
 func (matcher anyInt) Match(input interface{}) bool {
@@ -45,6 +50,12 @@ func (matcher anyDouble) Match(input interface{}) bool {
 	default:
 		return false
 	}
+}
+
+type anyData struct{}
+
+func (matcher anyData) Match(input interface{}) bool {
+	return true
 }
 
 func fuzzyCommandMatch(commandName string, args []interface{}, cmd *Cmd) bool {
