@@ -246,18 +246,42 @@ func TestSendFlushReceiveWithError(t *testing.T) {
 }
 
 func TestDummyFunctions(t *testing.T) {
-	conn := NewConn()
+	var conn Conn
 
 	if conn.Close() != nil {
 		t.Error("Close is not dummy!")
+	}
+
+	conn.CloseMock = func() error {
+		return fmt.Errorf("close error")
+	}
+
+	if err := conn.Close(); err == nil || err.Error() != "close error" {
+		t.Errorf("Not mocking Close method correctly. Expected “close error” and got “%v”", err)
 	}
 
 	if conn.Err() != nil {
 		t.Error("Err is not dummy!")
 	}
 
+	conn.ErrMock = func() error {
+		return fmt.Errorf("err error")
+	}
+
+	if err := conn.Err(); err == nil || err.Error() != "err error" {
+		t.Errorf("Not mocking Err method correctly. Expected “err error” and got “%v”", err)
+	}
+
 	if conn.Flush() != nil {
 		t.Error("Flush is not dummy!")
+	}
+
+	conn.FlushMock = func() error {
+		return fmt.Errorf("flush error")
+	}
+
+	if err := conn.Flush(); err == nil || err.Error() != "flush error" {
+		t.Errorf("Not mocking Flush method correctly. Expected “flush error” and got “%v”", err)
 	}
 }
 
