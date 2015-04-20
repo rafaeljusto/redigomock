@@ -106,60 +106,69 @@
 //  }
 //
 // When you use redis as a persistent list, then you might want to call the same redis command multiple times. For example :
-// func PollForData(conn redis.Conn) error {
-// 	for {
-// 		if url, err := conn.Do("LPOP", "URLS"); err != nil && err != redis.ErrNil {
-// 			return err
+//
+// 	func PollForData(conn redis.Conn) error {
+//		var url string
+//		var err error
+// 		for {
+// 			if url, err = conn.Do("LPOP", "URLS"); err != nil {
+// 				return err
+// 			}
+// 			go func(input string) {
+// 				// do something with the input
+// 			}(url)
 // 		}
-// 		go func(input string) {
-// 			// do something with the input
-// 		}(url)
-// 	}
-// 	panic("Shouldn't be here")
-// }
+//		panic("Shouldn't be here")
+//	}
 //
 // To test it, you can chain redis responses. Let's write a test case
-// func TestPollForData(t *testing.T) {
-// 	redigomock.Clear()
-// 	redigomock.Command("LPOP", "URLS").Expect("www.some.url.com").Expect("www.another.url.com").ExpectError(redis.ErrNil)
+//	func TestPollForData(t *testing.T) {
+// 	  	redigomock.Clear()
+// 	  	redigomock.Command("LPOP", "URLS").Expect("www.some.url.com").Expect("www.another.url.com").ExpectError(redis.ErrNil)
 //
-// 	err := PollForData(redigomock.NewConn())
-// 	if err != redis.ErrNil {
-// 		t.Error("This should return redis nil Error")
-// 	}
-// }
+// 	  	err := PollForData(redigomock.NewConn())
+//		if err != redis.ErrNil {
+//			t.Error("This should return redis nil Error")
+//		}
+//	}
+//
 // In the first iteration of the loop redigomock would return "www.some.url.com", then "www.another.url.com" and finally redis.ErrNil
 //
 //
 // Sometimes providing expected arguments to redigomock at compile time could be too constraining. Let's imagine you use redis hash sets to store some data, along with the
 // timestap of the last data update. Let's expand our Person struct :
-//  type Person struct {
-//  	Name      string `redis:"name"`
-//  	Age       int    `redis:"age"`
-//      UpdatedAt uint64 `redis:updatedat`
-//      Phone     string `redis:phone`
-//  }
+//	type Person struct {
+//		Name      string `redis:"name"`
+//		Age       int    `redis:"age"`
+//		UpdatedAt uint64 `redis:updatedat`
+//		Phone     string `redis:phone`
+//	}
 //
-// And add a function updating personal data (phone number for example. Please notice that the update timestamp can't be determined at compile time)
-// func UpdatePersonalData(conn redis.Conn, id string, person Person) error{
-// 	_, err := conn.Do("HMSET", fmt.Sprint("person:", id), "name", person.Name, "age", person.Age, "updatedat" , time.Now.Unix(), "phone" , person.Phone)
-// 	return err
-// }
+// And add a function updating personal data (phone number for example). Please notice that the update timestamp can't be determined at compile time
 //
-// func TestUpdatePersonalData(t *testing.T){
-// redigomock.Clear()
+//	func UpdatePersonalData(conn redis.Conn, id string, person Person) error{
+// 		_, err := conn.Do("HMSET", fmt.Sprint("person:", id), "name", person.Name, "age", person.Age, "updatedat" , time.Now.Unix(), "phone" , person.Phone)
+//		return err
+//	}
 //
-// person := Person{
-//	Name :"A name",
-//	Age : 18
-//	Phone : "123456"
-// }
+// Unit test :
 //
-// redigomock.Commmand("HMSET", "person:1", "name", person.Name, "age", person.Age, "updatedat", redigomock.NewAnyInt(), "phone", person.Phone).Expect("OK!")
-// err := UpdatePersonalData(redigomock.NewConn(), "1", person)
-// if err != nil {
-//	t.Error("This shouldn't return any errors")
-// }
+//	func TestUpdatePersonalData(t *testing.T){
+//		redigomock.Clear()
+//
+// 		person := Person{
+// 			Name :"A name",
+//			Age : 18
+//			Phone : "123456"
+//		}
+//
+//		redigomock.Commmand("HMSET", "person:1", "name", person.Name, "age", person.Age, "updatedat", redigomock.NewAnyInt(), "phone", person.Phone).Expect("OK!")
+//		err := UpdatePersonalData(redigomock.NewConn(), "1", person)
+//		if err != nil {
+//			t.Error("This shouldn't return any errors")
+//		}
+//	}
+//
 // As you can see at the position of current timestamp redigomock is told to match AnyInt struct created by NewAnyInt() method. AnyInt struct will match any integer
 // passed to redigomock from the tested method. Please see fuzzyMatch.go file for more details.
 package redigomock
