@@ -122,7 +122,7 @@
 // func TestPollForData(t *testing.T) {
 // 	redigomock.Clear()
 // 	redigomock.Command("LPOP", "URLS").Expect("www.some.url.com").Expect("www.another.url.com").ExpectError(redis.ErrNil)
-
+//
 // 	err := PollForData(redigomock.NewConn())
 // 	if err != redis.ErrNil {
 // 		t.Error("This should return redis nil Error")

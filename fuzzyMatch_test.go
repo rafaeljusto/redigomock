@@ -64,6 +64,30 @@ func TestFuzzyCommandMatchAnyDouble(t *testing.T) {
 	}
 }
 
+func TestFuzzyCommandMatchAnyData(t *testing.T) {
+	var fuzzyCommandTestInput = []struct {
+		arguments []interface{}
+		match     bool
+	}{
+		{[]interface{}{"TEST_COMMAND", "Test string", "Another string"}, true},
+		{[]interface{}{"TEST_COMMAND", "Test string", 12344}, true},
+		{[]interface{}{"TEST_COMMAND", "Test string", Command}, true}, // func
+		{[]interface{}{"TEST_COMMAND", "Test string", []string{"Slice of", "strings"}}, true},
+		{[]interface{}{"TEST_COMMAND", "Test string", "Another string", 11.22}, false},
+	}
+
+	command := Cmd{
+		Name: "TEST_COMMAND",
+		Args: []interface{}{"Test string", NewAnyData()},
+	}
+	for pos, element := range fuzzyCommandTestInput {
+		if retVal := fuzzyCommandMatch(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
+			t.Errorf("comparing fuzzy comand failed. Comparison between comand [%+v] and test arguments : [%v] at position %v returned %v while it should have returned %v",
+				command, element.arguments, pos, retVal, element.match)
+		}
+	}
+}
+
 func TestFindWithFuzzy(t *testing.T) {
 	commands = []*Cmd{}
 	fuzzyCommands = []*Cmd{}
