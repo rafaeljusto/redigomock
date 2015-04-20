@@ -19,6 +19,9 @@ var (
 
 // Conn is the struct that can be used where you inject the redigo.Conn on your project
 type Conn struct {
+	CloseMock func() error // Mock the redigo Close method
+	ErrMock   func() error // Mock the redigo Err method
+	FlushMock func() error // Mock the redigo Flush method
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we don't need any Redis
@@ -27,16 +30,22 @@ func NewConn() redis.Conn {
 	return Conn{}
 }
 
-// Close is dummy method only to respect the redigo.Conn interface (we don't have a connection to
-// close)
+// Close can be mocked using the Conn struct attributes
 func (c Conn) Close() error {
-	return nil
+	if c.CloseMock == nil {
+		return nil
+	}
+
+	return c.CloseMock()
 }
 
-// Err for now is a dummy object, depending on the demand of checking this level of error we can
-// start returning something useful here
+// Err can be mocked using the Conn struct attributes
 func (c Conn) Err() error {
-	return nil
+	if c.ErrMock == nil {
+		return nil
+	}
+
+	return c.ErrMock()
 }
 
 // Do looks in the registered commands (via Command function) if someone matchs with the given
@@ -76,9 +85,13 @@ func (c Conn) Send(commandName string, args ...interface{}) error {
 	return nil
 }
 
-// Flush is a dummy method as we don't execute nothing
+// Flush can be mocked using the Conn struct attributes
 func (c Conn) Flush() error {
-	return nil
+	if c.FlushMock == nil {
+		return nil
+	}
+
+	return c.FlushMock()
 }
 
 // Receive will process the queue created by the Send method, only one item of the queue is
