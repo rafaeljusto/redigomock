@@ -66,26 +66,7 @@ func Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd {
 	newArgs[1] = keyCount
 	copy(newArgs[2:], args)
 
-	cmd := &Cmd{
-		Name: "EVALSHA",
-		Args: newArgs,
-	}
-
-	removeRelatedCommands("EVALSHA", newArgs)
-
-	isFuzzy := false
-	for _, item := range newArgs {
-		if implementsFuzzy(item) == true {
-			isFuzzy = true
-		}
-	}
-
-	if isFuzzy {
-		fuzzyCommands = append(fuzzyCommands, cmd)
-	} else {
-		commands = append(commands, cmd)
-	}
-	return cmd
+	return Command("EVALSHA", newArgs...)
 }
 
 // GenericCommand register a command without arguments. If a command with arguments doesn't match
