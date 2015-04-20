@@ -1,4 +1,5 @@
 // Copyright 2014 Rafael Dantas Justo. All rights reserved.
+
 // Use of this source code is governed by a GPL
 // license that can be found in the LICENSE file.
 
@@ -103,4 +104,29 @@
 // 	    t.Error("Should return an error!")
 //    }
 //  }
+//
+// When you use redis as a persistent list, then you might want to call the same redis command multiple times. For example :
+// func PollForData(conn redis.Conn) error {
+// 	for {
+// 		if url, err := conn.Do("LPOP", "URLS"); err != nil && err != redis.ErrNil {
+// 			return err
+// 		}
+// 		go func(input string) {
+// 			// do something with the input
+// 		}(url)
+// 	}
+// 	panic("Shouldn't be here")
+// }
+//
+//To test it, you can chain redis responses. Let's write a test case
+// func TestPollForData(t *testing.T) {
+// 	redigomock.Clear()
+// 	redigomock.Command("LPOP", "URLS").Expect("www.some.url.com").Expect("www.another.url.com").ExpectError(redis.ErrNil)
+
+// 	err := PollForData(redigomock.NewConn())
+// 	if err != redis.ErrNil {
+// 		t.Error("This should return redis nil Error")
+// 	}
+// }
+//In the first iteration of the loop redigomock would return "www.some.url.com", then "www.another.url.com" and finally redis.ErrNil
 package redigomock

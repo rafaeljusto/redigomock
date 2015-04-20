@@ -101,8 +101,9 @@ func GenericCommand(commandName string) *Cmd {
 }
 
 // Expect sets a response for this command. Everytime a Do or Receive methods are executed for a
-// registered command this response or error will be returned. You cannot set a response and a error
-// for the same command/arguments
+// registered command this response or error will be returned. Expect call returns a pointer to Cmd struct,
+// so you can chain Expect calls. Chained responses will be returned on subsequend calls matching this commands arguments
+// in FIFO order.
 func (c *Cmd) Expect(response interface{}) *Cmd {
 	c.Responses = append(c.Responses, Response{response, nil})
 	return c
