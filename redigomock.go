@@ -19,15 +19,19 @@ var (
 
 // Conn is the struct that can be used where you inject the redigo.Conn on your project
 type Conn struct {
-	CloseMock func() error // Mock the redigo Close method
-	ErrMock   func() error // Mock the redigo Err method
-	FlushMock func() error // Mock the redigo Flush method
+	ReceiveWait bool         // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
+	ReceiveNow  chan bool    // Used to lock Receive method to simulate a PubSub scenario
+	CloseMock   func() error // Mock the redigo Close method
+	ErrMock     func() error // Mock the redigo Err method
+	FlushMock   func() error // Mock the redigo Flush method
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we don't need any Redis
 // conneciton parameter
 func NewConn() redis.Conn {
-	return Conn{}
+	return Conn{
+		ReceiveNow: make(chan bool),
+	}
 }
 
 // Close can be mocked using the Conn struct attributes
@@ -97,6 +101,10 @@ func (c Conn) Flush() error {
 // Receive will process the queue created by the Send method, only one item of the queue is
 // processed by Receive call. It will work as the Do method.
 func (c Conn) Receive() (reply interface{}, err error) {
+	if c.ReceiveWait {
+		<-c.ReceiveNow
+	}
+
 	if len(queue) == 0 {
 		return nil, fmt.Errorf("no more items")
 	}
