@@ -3,6 +3,7 @@ package redigomock
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/garyburd/redigo/redis"
 )
@@ -223,6 +224,65 @@ func TestSendFlushReceive(t *testing.T) {
 
 	if _, err := conn.Receive(); err == nil {
 		t.Error("Not detecting when there's no more items to receive")
+	}
+}
+
+func TestSendReceiveWithWait(t *testing.T) {
+	commands = []*Cmd{}
+
+	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+		"name": "Mr. Johson",
+		"age":  "42",
+	})
+	Command("HGETALL", "person:2").ExpectMap(map[string]string{
+		"name": "Ms. Jennifer",
+		"age":  "28",
+	})
+
+	conn := Conn{
+		ReceiveWait: true,
+		ReceiveNow:  make(chan bool),
+	}
+
+	ids := []string{"1", "2"}
+	for _, id := range ids {
+		conn.Send("HGETALL", fmt.Sprintf("person:%s", id))
+	}
+
+	var people []Person
+
+	go func() {
+		for i := 0; i < len(ids); i++ {
+			values, err := redis.Values(conn.Receive())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var person Person
+			err = redis.ScanStruct(values, &person)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			people = append(people, person)
+		}
+	}()
+
+	for i := 0; i < len(ids); i++ {
+		conn.ReceiveNow <- true
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	if len(people) != 2 {
+		t.Fatalf("Wrong number of people. Expected '2' and got '%d'", len(people))
+	}
+
+	if people[0].Name != "Mr. Johson" || people[1].Name != "Ms. Jennifer" {
+		t.Error("People name order are wrong")
+	}
+
+	if people[0].Age != 42 || people[1].Age != 28 {
+		t.Error("People age order are wrong")
 	}
 }
 

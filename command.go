@@ -37,7 +37,19 @@ func Command(commandName string, args ...interface{}) *Cmd {
 	}
 
 	removeRelatedCommands(commandName, args)
-	commands = append(commands, cmd)
+
+	isFuzzy := false
+	for _, item := range args {
+		if implementsFuzzy(item) == true {
+			isFuzzy = true
+		}
+	}
+
+	if isFuzzy {
+		fuzzyCommands = append(fuzzyCommands, cmd)
+	} else {
+		commands = append(commands, cmd)
+	}
 	return cmd
 }
 
@@ -54,13 +66,7 @@ func Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd {
 	newArgs[1] = keyCount
 	copy(newArgs[2:], args)
 
-	cmd := &Cmd{
-		Name: "EVALSHA",
-		Args: newArgs,
-	}
-	removeRelatedCommands("EVALSHA", newArgs)
-	commands = append(commands, cmd)
-	return cmd
+	return Command("EVALSHA", newArgs...)
 }
 
 // GenericCommand register a command without arguments. If a command with arguments doesn't match
@@ -76,8 +82,9 @@ func GenericCommand(commandName string) *Cmd {
 }
 
 // Expect sets a response for this command. Everytime a Do or Receive methods are executed for a
-// registered command this response or error will be returned. You cannot set a response and a error
-// for the same command/arguments
+// registered command this response or error will be returned. Expect call returns a pointer to Cmd struct,
+// so you can chain Expect calls. Chained responses will be returned on subsequend calls matching this commands arguments
+// in FIFO order.
 func (c *Cmd) Expect(response interface{}) *Cmd {
 	c.Responses = append(c.Responses, Response{response, nil})
 	return c
@@ -110,6 +117,11 @@ func find(commandName string, args []interface{}) *Cmd {
 		}
 	}
 
+	for _, cmd := range fuzzyCommands {
+		if fuzzyCommandMatch(commandName, args, cmd) {
+			return cmd
+		}
+	}
 	return nil
 }
 
@@ -117,15 +129,33 @@ func find(commandName string, args []interface{}) *Cmd {
 // registered with the same name and arguments. This should avoid duplicated mocked commands
 func removeRelatedCommands(commandName string, args []interface{}) {
 	var unique []*Cmd
+	var uniqueFuzzy []*Cmd
 
-	for _, cmd := range commands {
-		// New array will contain only commands that are not related to the given one
-		if !equal(commandName, args, cmd) {
-			unique = append(unique, cmd)
+	isFuzzy := false
+	for _, item := range args {
+		if implementsFuzzy(item) == true {
+			isFuzzy = true
 		}
 	}
 
-	commands = unique
+	if isFuzzy {
+		for _, cmd := range fuzzyCommands {
+			if !fuzzyCommandEqual(commandName, args, cmd) {
+				uniqueFuzzy = append(uniqueFuzzy, cmd)
+			} else {
+			}
+		}
+		fuzzyCommands = uniqueFuzzy
+	} else {
+		for _, cmd := range commands {
+			// New array will contain only commands that are not related to the given one
+			if !equal(commandName, args, cmd) {
+				unique = append(unique, cmd)
+			}
+		}
+		commands = unique
+	}
+
 }
 
 // equal verify if a command/argumets is related to a registered command. We allow arguments in any
