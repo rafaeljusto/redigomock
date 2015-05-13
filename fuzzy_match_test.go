@@ -90,8 +90,7 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 
 func TestFindWithFuzzy(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
-
+	
 	Command("HGETALL", NewAnyInt(), NewAnyDouble(), "Test string")
 
 	if find("HGETALL", []interface{}{1, 2.0}) != nil {
