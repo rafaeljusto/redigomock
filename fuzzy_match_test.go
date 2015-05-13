@@ -26,7 +26,7 @@ func TestFuzzyCommandMatchAnyInt(t *testing.T) {
 		Args: []interface{}{"Test string", NewAnyInt()},
 	}
 	for pos, element := range fuzzyCommandTestInput {
-		if retVal := fuzzyCommandMatch(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
+		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
 			t.Fatalf("comparing fuzzy comand failed. Comparison between comand [%#v] and test arguments : [%#v] at position %v returned %v while it should have returned %v",
 				command, element.arguments, pos, retVal, element.match)
 		}
@@ -57,7 +57,7 @@ func TestFuzzyCommandMatchAnyDouble(t *testing.T) {
 		Args: []interface{}{"Test string", NewAnyDouble()},
 	}
 	for pos, element := range fuzzyCommandTestInput {
-		if retVal := fuzzyCommandMatch(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
+		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
 			t.Errorf("comparing fuzzy comand failed. Comparison between comand [%+v] and test arguments : [%v] at position %v returned %v while it should have returned %v",
 				command, element.arguments, pos, retVal, element.match)
 		}
@@ -81,7 +81,7 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 		Args: []interface{}{"Test string", NewAnyData()},
 	}
 	for pos, element := range fuzzyCommandTestInput {
-		if retVal := fuzzyCommandMatch(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
+		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
 			t.Errorf("comparing fuzzy comand failed. Comparison between comand [%+v] and test arguments : [%v] at position %v returned %v while it should have returned %v",
 				command, element.arguments, pos, retVal, element.match)
 		}
@@ -90,8 +90,7 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 
 func TestFindWithFuzzy(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
-
+	
 	Command("HGETALL", NewAnyInt(), NewAnyDouble(), "Test string")
 
 	if find("HGETALL", []interface{}{1, 2.0}) != nil {
@@ -117,7 +116,6 @@ func TestFindWithFuzzy(t *testing.T) {
 
 func TestRemoveRelatedFuzzyCommands(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL", 1, 2.0, "c")                // saved , non fuzzy
 	Command("HGETALL", NewAnyInt(), 2.0, "c")      // saved , fuzzy
@@ -129,10 +127,7 @@ func TestRemoveRelatedFuzzyCommands(t *testing.T) {
 	Command("HGETALL", NewAnyInt(), 2.0, "c", "d") // saved, fuzzy
 	Command("HGETALL", 1, NewAnyDouble(), "c")     // saved, fuzzy
 
-	if len(fuzzyCommands) != 7 {
-		t.Errorf("Not removing related fuzzy commands. Expected '7' and got '%d'", len(fuzzyCommands))
-	}
-	if len(commands) != 1 {
-		t.Errorf("Non fuzzy command cound invalid, expected 1, got %d", len(commands))
+	if len(commands) != 8 {
+		t.Errorf("Non fuzzy command cound invalid, expected 8, got %d", len(commands))
 	}
 }
