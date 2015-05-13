@@ -58,38 +58,6 @@ func (matcher anyData) Match(input interface{}) bool {
 	return true
 }
 
-func fuzzyCommandMatch(commandName string, args []interface{}, cmd *Cmd) bool {
-	if commandName != cmd.Name || len(args) != len(cmd.Args) {
-		return false
-	}
-
-	for pos := range cmd.Args {
-		if implementsFuzzy(cmd.Args[pos]) {
-			if cmd.Args[pos].(FuzzyMatcher).Match(args[pos]) == false {
-				return false
-			}
-		} else {
-			if reflect.DeepEqual(cmd.Args[pos], args[pos]) == false {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 func implementsFuzzy(input interface{}) bool {
 	return reflect.TypeOf(input).Implements(reflect.TypeOf((*FuzzyMatcher)(nil)).Elem())
-}
-
-func fuzzyCommandEqual(commandName string, args []interface{}, cmd *Cmd) bool {
-	if commandName != cmd.Name || len(args) != len(cmd.Args) {
-		return false
-	}
-
-	for pos := range cmd.Args {
-		if reflect.DeepEqual(cmd.Args[pos], args[pos]) == false {
-			return false
-		}
-	}
-	return true
 }
