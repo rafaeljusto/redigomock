@@ -71,7 +71,7 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 	}{
 		{[]interface{}{"TEST_COMMAND", "Test string", "Another string"}, true},
 		{[]interface{}{"TEST_COMMAND", "Test string", 12344}, true},
-		{[]interface{}{"TEST_COMMAND", "Test string", Command}, true}, // func
+		{[]interface{}{"TEST_COMMAND", "Test string", func() {}}, true}, // func
 		{[]interface{}{"TEST_COMMAND", "Test string", []string{"Slice of", "strings"}}, true},
 		{[]interface{}{"TEST_COMMAND", "Test string", "Another string", 11.22}, false},
 	}
@@ -89,45 +89,45 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 }
 
 func TestFindWithFuzzy(t *testing.T) {
-	commands = []*Cmd{}
-	
-	Command("HGETALL", NewAnyInt(), NewAnyDouble(), "Test string")
+	connection := NewConn()
 
-	if find("HGETALL", []interface{}{1, 2.0}) != nil {
+	connection.Command("HGETALL", NewAnyInt(), NewAnyDouble(), "Test string")
+
+	if connection.find("HGETALL", []interface{}{1, 2.0}) != nil {
 		t.Error("Returning command without comparing all registered arguments")
 	}
 
-	if find("HGETALL", []interface{}{1, 2.0, "Test string", "a"}) != nil {
+	if connection.find("HGETALL", []interface{}{1, 2.0, "Test string", "a"}) != nil {
 		t.Error("Returning command without comparing all informed arguments")
 	}
 
-	if find("HSETALL", []interface{}{1, 2.0, "Test string"}) != nil {
+	if connection.find("HSETALL", []interface{}{1, 2.0, "Test string"}) != nil {
 		t.Error("Returning command when the name is different")
 	}
 
-	if find("HGETALL", []interface{}{1.0, "Test string", 2}) != nil {
+	if connection.find("HGETALL", []interface{}{1.0, "Test string", 2}) != nil {
 		t.Error("Returning command with arguments in a different order")
 	}
 
-	if find("HGETALL", []interface{}{1, 2.0, "Test string"}) == nil {
+	if connection.find("HGETALL", []interface{}{1, 2.0, "Test string"}) == nil {
 		t.Error("Could not find command with arguments in the same order")
 	}
 }
 
 func TestRemoveRelatedFuzzyCommands(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	Command("HGETALL", 1, 2.0, "c")                // saved , non fuzzy
-	Command("HGETALL", NewAnyInt(), 2.0, "c")      // saved , fuzzy
-	Command("HGETALL", NewAnyInt(), 2.0, "c")      // not saved!! , fuzzy
-	Command("COMMAND2", NewAnyInt(), 2.0, "c")     // saved , fuzzy
-	Command("HGETALL", NewAnyInt(), 5.0, "c")      // saved, fuzzy
-	Command("HGETALL", NewAnyInt(), 2.0, "d")      // saved, fuzzy
-	Command("HGETALL", NewAnyInt(), 2, "c")        // saved, fuzzy
-	Command("HGETALL", NewAnyInt(), 2.0, "c", "d") // saved, fuzzy
-	Command("HGETALL", 1, NewAnyDouble(), "c")     // saved, fuzzy
+	connection.Command("HGETALL", 1, 2.0, "c")                // saved , non fuzzy
+	connection.Command("HGETALL", NewAnyInt(), 2.0, "c")      // saved , fuzzy
+	connection.Command("HGETALL", NewAnyInt(), 2.0, "c")      // not saved!! , fuzzy
+	connection.Command("COMMAND2", NewAnyInt(), 2.0, "c")     // saved , fuzzy
+	connection.Command("HGETALL", NewAnyInt(), 5.0, "c")      // saved, fuzzy
+	connection.Command("HGETALL", NewAnyInt(), 2.0, "d")      // saved, fuzzy
+	connection.Command("HGETALL", NewAnyInt(), 2, "c")        // saved, fuzzy
+	connection.Command("HGETALL", NewAnyInt(), 2.0, "c", "d") // saved, fuzzy
+	connection.Command("HGETALL", 1, NewAnyDouble(), "c")     // saved, fuzzy
 
-	if len(commands) != 8 {
-		t.Errorf("Non fuzzy command cound invalid, expected 8, got %d", len(commands))
+	if len(connection.commands) != 8 {
+		t.Errorf("Non fuzzy command cound invalid, expected 8, got %d", len(connection.commands))
 	}
 }
