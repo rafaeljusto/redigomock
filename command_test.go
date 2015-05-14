@@ -13,7 +13,6 @@ import (
 
 func TestCommand(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL", "a", "b", "c")
 	if len(commands) != 1 {
@@ -55,7 +54,6 @@ func TestCommand(t *testing.T) {
 
 func TestScript(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	scriptData := []byte("This should be a lua script for redis")
 	h := sha1.New()
@@ -161,7 +159,6 @@ func TestScript(t *testing.T) {
 
 func TestGenericCommand(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	GenericCommand("HGETALL")
 	if len(commands) != 1 {
@@ -185,7 +182,6 @@ func TestGenericCommand(t *testing.T) {
 
 func TestExpect(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL").Expect("test")
 	if len(commands) != 1 {
@@ -210,7 +206,6 @@ func TestExpect(t *testing.T) {
 
 func TestExpectMap(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL").ExpectMap(map[string]string{
 		"key1": "value1",
@@ -252,7 +247,6 @@ func TestExpectMap(t *testing.T) {
 
 func TestExpectMapReplace(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL").ExpectMap(map[string]string{
 		"key1": "value1",
@@ -298,7 +292,6 @@ func TestExpectMapReplace(t *testing.T) {
 
 func TestExpectError(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL").ExpectError(fmt.Errorf("error"))
 
@@ -319,7 +312,6 @@ func TestExpectError(t *testing.T) {
 
 func TestFind(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
 	Command("HGETALL", "a", "b", "c")
 
@@ -335,10 +327,6 @@ func TestFind(t *testing.T) {
 		t.Error("Returning command when the name is different")
 	}
 
-	if find("HGETALL", []interface{}{"c", "b", "a"}) == nil {
-		t.Error("Could not find command with arguments in a different order")
-	}
-
 	if find("HGETALL", []interface{}{"a", "b", "c"}) == nil {
 		t.Error("Could not find command with arguments in the same order")
 	}
@@ -346,24 +334,20 @@ func TestFind(t *testing.T) {
 
 func TestRemoveRelatedCommands(t *testing.T) {
 	commands = []*Cmd{}
-	fuzzyCommands = []*Cmd{}
 
-	Command("HGETALL", "a", "b", "c")
-	Command("HGETALL", "a", "b", "c")
-	Command("HGETALL", "c", "b", "a")
-	Command("HGETALL")
-	Command("HSETALL", "c", "b", "a")
-	Command("HSETALL")
+	Command("HGETALL", "a", "b", "c") // 1
+	Command("HGETALL", "a", "b", "c") // omit
+	Command("HGETALL", "c", "b", "a") // 2
+	Command("HGETALL")                //3
+	Command("HSETALL", "c", "b", "a") // 4
+	Command("HSETALL")                //5
 
-	if len(commands) != 4 {
-		t.Errorf("Not removing related commands. Expected '4' and got '%d'", len(commands))
-	}
-	if len(fuzzyCommands) != 0 {
-		t.Errorf("Length of fuzzyCommands != 0 , got %d ", len(fuzzyCommands))
+	if len(commands) != 5 {
+		t.Errorf("Not removing related commands. Expected '5' and got '%d'", len(commands))
 	}
 }
 
-func TestEqual(t *testing.T) {
+func TestMatch(t *testing.T) {
 	data := []struct {
 		Cmd         *Cmd
 		CommandName string
@@ -386,7 +370,7 @@ func TestEqual(t *testing.T) {
 			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
 			CommandName: "HGETALL",
 			Args:        []interface{}{"c", "b", "a"},
-			Equal:       true,
+			Equal:       false,
 		},
 		{
 			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
@@ -415,7 +399,7 @@ func TestEqual(t *testing.T) {
 	}
 
 	for i, item := range data {
-		e := equal(item.CommandName, item.Args, item.Cmd)
+		e := match(item.CommandName, item.Args, item.Cmd)
 		if e != item.Equal && item.Equal {
 			t.Errorf("Expected commands to be equal for data item '%d'", i)
 

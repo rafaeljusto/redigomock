@@ -37,19 +37,7 @@ func Command(commandName string, args ...interface{}) *Cmd {
 	}
 
 	removeRelatedCommands(commandName, args)
-
-	isFuzzy := false
-	for _, item := range args {
-		if implementsFuzzy(item) == true {
-			isFuzzy = true
-		}
-	}
-
-	if isFuzzy {
-		fuzzyCommands = append(fuzzyCommands, cmd)
-	} else {
-		commands = append(commands, cmd)
-	}
+	commands = append(commands, cmd)
 	return cmd
 }
 
@@ -108,17 +96,11 @@ func (c *Cmd) ExpectError(err error) *Cmd {
 	return c
 }
 
-// find will scan the registered commands, looking for the first command with the same name and
-// arguments. If the command is not found nil is returned
+//find will scan the registered commands, looking for the first command with the same name and
+//arguments. If the command is not found nil is returned
 func find(commandName string, args []interface{}) *Cmd {
 	for _, cmd := range commands {
-		if equal(commandName, args, cmd) {
-			return cmd
-		}
-	}
-
-	for _, cmd := range fuzzyCommands {
-		if fuzzyCommandMatch(commandName, args, cmd) {
+		if match(commandName, args, cmd) {
 			return cmd
 		}
 	}
@@ -129,57 +111,53 @@ func find(commandName string, args []interface{}) *Cmd {
 // registered with the same name and arguments. This should avoid duplicated mocked commands
 func removeRelatedCommands(commandName string, args []interface{}) {
 	var unique []*Cmd
-	var uniqueFuzzy []*Cmd
 
-	isFuzzy := false
-	for _, item := range args {
-		if implementsFuzzy(item) == true {
-			isFuzzy = true
+	for _, cmd := range commands {
+		// New array will contain only commands that are not related to the given one
+		if !equal(commandName, args, cmd) {
+			unique = append(unique, cmd)
 		}
 	}
-
-	if isFuzzy {
-		for _, cmd := range fuzzyCommands {
-			if !fuzzyCommandEqual(commandName, args, cmd) {
-				uniqueFuzzy = append(uniqueFuzzy, cmd)
-			} else {
-			}
-		}
-		fuzzyCommands = uniqueFuzzy
-	} else {
-		for _, cmd := range commands {
-			// New array will contain only commands that are not related to the given one
-			if !equal(commandName, args, cmd) {
-				unique = append(unique, cmd)
-			}
-		}
-		commands = unique
-	}
-
+	commands = unique
 }
 
-// equal verify if a command/argumets is related to a registered command. We allow arguments in any
-// order so long they have a match
+// match verify if a command/argumets is related to a registered command.
 func equal(commandName string, args []interface{}, cmd *Cmd) bool {
-	if cmd.Name != commandName || len(cmd.Args) != len(args) {
+	if commandName != cmd.Name || len(args) != len(cmd.Args) {
 		return false
 	}
 
-	for i := range cmd.Args {
-		found := false
-
-		// Allow arguments in different order
-		for j := range args {
-			if reflect.DeepEqual(cmd.Args[i], args[j]) {
-				found = true
-				break
+	for pos := range cmd.Args {
+		if implementsFuzzy(cmd.Args[pos]) && implementsFuzzy(args[pos]) {
+			if reflect.TypeOf(cmd.Args[pos]) != reflect.TypeOf(args[pos]) {
+				return false
+			}
+		} else if implementsFuzzy(cmd.Args[pos]) || implementsFuzzy(args[pos]) {
+			return false
+		} else {
+			if reflect.DeepEqual(cmd.Args[pos], args[pos]) == false {
+				return false
 			}
 		}
+	}
+	return true
+}
 
-		if !found {
-			return false
-		}
+//match check if provided arguments can be matched with any registered commands
+func match(commandName string, args []interface{}, cmd *Cmd) bool {
+	if commandName != cmd.Name || len(args) != len(cmd.Args) {
+		return false
 	}
 
+	for pos := range cmd.Args {
+		if implementsFuzzy(cmd.Args[pos]) {
+			if cmd.Args[pos].(FuzzyMatcher).Match(args[pos]) == false {
+				return false
+			}
+		} else if reflect.DeepEqual(cmd.Args[pos], args[pos]) == false {
+			return false
+		}
+
+	}
 	return true
 }
