@@ -4,11 +4,7 @@
 
 package redigomock
 
-import (
-	"crypto/sha1"
-	"encoding/hex"
-	"reflect"
-)
+import "reflect"
 
 // Response struct that represents single response from `Do` call
 type Response struct {
@@ -22,75 +18,6 @@ type Cmd struct {
 	Name      string        // Name of the command
 	Args      []interface{} // Arguments of the command
 	Responses []Response    // Slice of returned responses
-}
-
-// Command register a command in the mock system using the same arguments of a Do or Send commands.
-// It will return a registered command object where you can set the response or error
-func (c *Conn) Command(commandName string, args ...interface{}) *Cmd {
-	cmd := &Cmd{
-		Name: commandName,
-		Args: args,
-	}
-	c.removeRelatedCommands(commandName, args)
-	c.commands = append(c.commands, cmd)
-	return cmd
-}
-
-// Script registers a command in the mock system just like Command method would do
-// The first argument is a byte array with the script text, next ones are the ones
-// you would pass to redis Script.Do() method
-func (c *Conn) Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd {
-	h := sha1.New()
-	h.Write(scriptData)
-	sha1sum := hex.EncodeToString(h.Sum(nil))
-
-	newArgs := make([]interface{}, 2+len(args))
-	newArgs[0] = sha1sum
-	newArgs[1] = keyCount
-	copy(newArgs[2:], args)
-
-	return c.Command("EVALSHA", newArgs...)
-}
-
-// GenericCommand register a command without arguments. If a command with arguments doesn't match
-// with any registered command, it will look for generic commands before throwing an error
-func (c *Conn) GenericCommand(commandName string) *Cmd {
-	cmd := &Cmd{
-		Name: commandName,
-	}
-
-	c.removeRelatedCommands(commandName, nil)
-	c.commands = append(c.commands, cmd)
-	return cmd
-}
-
-//find will scan the registered commands, looking for the first command with the same name and
-//arguments. If the command is not found nil is returned
-func (c *Conn) find(commandName string, args []interface{}) *Cmd {
-	for _, cmd := range c.commands {
-		if match(commandName, args, cmd) {
-			return cmd
-		}
-	}
-	return nil
-}
-
-// removeRelatedCommands verify if a command is already registered, removing any command already
-// registered with the same name and arguments. This should avoid duplicated mocked commands
-func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
-	var unique []*Cmd
-
-	for _, cmd := range c.commands {
-		// New array will contain only commands that are not related to the given one
-		if !equal(commandName, args, cmd) {
-			unique = append(unique, cmd)
-		}
-	}
-	c.commands = unique
-}
-
-func (c *Conn) Clear() {
-	c.commands = []*Cmd{}
 }
 
 // match verify if a command/argumets is related to a registered command.

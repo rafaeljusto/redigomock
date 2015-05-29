@@ -363,13 +363,12 @@ func TestClear(t *testing.T) {
 	connection.Send("HGETALL", "person:2")
 
 	connection.Clear()
-	ClearQueue()
 
 	if len(connection.commands) > 0 {
 		t.Error("Clear function not clearing registered commands")
 	}
 
-	if len(queue) > 0 {
+	if len(connection.queue) > 0 {
 		t.Error("Clear function not clearing the queue")
 	}
 }
