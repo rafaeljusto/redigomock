@@ -5,37 +5,37 @@
 package redigomock
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
-
-	"github.com/garyburd/redigo/redis"
 )
 
-var (
-	queue []struct {
-		commandName string
-		args        []interface{}
-	}
-)
+type queueElement struct {
+	commandName string
+	args        []interface{}
+}
 
 // Conn is the struct that can be used where you inject the redigo.Conn on your project
 type Conn struct {
-	ReceiveWait bool         // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
-	ReceiveNow  chan bool    // Used to lock Receive method to simulate a PubSub scenario
-	CloseMock   func() error // Mock the redigo Close method
-	ErrMock     func() error // Mock the redigo Err method
-	FlushMock   func() error // Mock the redigo Flush method
+	ReceiveWait bool           // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
+	ReceiveNow  chan bool      // Used to lock Receive method to simulate a PubSub scenario
+	CloseMock   func() error   // Mock the redigo Close method
+	ErrMock     func() error   // Mock the redigo Err method
+	FlushMock   func() error   // Mock the redigo Flush method
+	commands    []*Cmd         // Slice that stores all registered commands for each connection
+	queue       []queueElement //Slice that stores all queued commands for each connection
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we don't need any Redis
 // conneciton parameter
-func NewConn() redis.Conn {
-	return Conn{
+func NewConn() *Conn {
+	return &Conn{
 		ReceiveNow: make(chan bool),
 	}
 }
 
 // Close can be mocked using the Conn struct attributes
-func (c Conn) Close() error {
+func (c *Conn) Close() error {
 	if c.CloseMock == nil {
 		return nil
 	}
@@ -44,7 +44,7 @@ func (c Conn) Close() error {
 }
 
 // Err can be mocked using the Conn struct attributes
-func (c Conn) Err() error {
+func (c *Conn) Err() error {
 	if c.ErrMock == nil {
 		return nil
 	}
@@ -52,14 +52,84 @@ func (c Conn) Err() error {
 	return c.ErrMock()
 }
 
+// Command register a command in the mock system using the same arguments of a Do or Send commands.
+// It will return a registered command object where you can set the response or error
+func (c *Conn) Command(commandName string, args ...interface{}) *Cmd {
+	cmd := &Cmd{
+		Name: commandName,
+		Args: args,
+	}
+	c.removeRelatedCommands(commandName, args)
+	c.commands = append(c.commands, cmd)
+	return cmd
+}
+
+// Script registers a command in the mock system just like Command method would do
+// The first argument is a byte array with the script text, next ones are the ones
+// you would pass to redis Script.Do() method
+func (c *Conn) Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd {
+	h := sha1.New()
+	h.Write(scriptData)
+	sha1sum := hex.EncodeToString(h.Sum(nil))
+
+	newArgs := make([]interface{}, 2+len(args))
+	newArgs[0] = sha1sum
+	newArgs[1] = keyCount
+	copy(newArgs[2:], args)
+
+	return c.Command("EVALSHA", newArgs...)
+}
+
+// GenericCommand register a command without arguments. If a command with arguments doesn't match
+// with any registered command, it will look for generic commands before throwing an error
+func (c *Conn) GenericCommand(commandName string) *Cmd {
+	cmd := &Cmd{
+		Name: commandName,
+	}
+
+	c.removeRelatedCommands(commandName, nil)
+	c.commands = append(c.commands, cmd)
+	return cmd
+}
+
+//find will scan the registered commands, looking for the first command with the same name and
+//arguments. If the command is not found nil is returned
+func (c *Conn) find(commandName string, args []interface{}) *Cmd {
+	for _, cmd := range c.commands {
+		if match(commandName, args, cmd) {
+			return cmd
+		}
+	}
+	return nil
+}
+
+// removeRelatedCommands verify if a command is already registered, removing any command already
+// registered with the same name and arguments. This should avoid duplicated mocked commands
+func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
+	var unique []*Cmd
+
+	for _, cmd := range c.commands {
+		// New array will contain only commands that are not related to the given one
+		if !equal(commandName, args, cmd) {
+			unique = append(unique, cmd)
+		}
+	}
+	c.commands = unique
+}
+
+func (c *Conn) Clear() {
+	c.commands = []*Cmd{}
+	c.queue = []queueElement{}
+}
+
 // Do looks in the registered commands (via Command function) if someone matchs with the given
 // command name and arguments, if so the corresponding response or error is returned. If no
 // registered command is found an error is returned
-func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
-	cmd := find(commandName, args)
+func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
+	cmd := c.find(commandName, args)
 	if cmd == nil {
 		// Didn't find a specific command, try to get a generic one
-		if cmd = find(commandName, nil); cmd == nil {
+		if cmd = c.find(commandName, nil); cmd == nil {
 			return nil, fmt.Errorf("command %s with arguments %#v not registered in redigomock library",
 				commandName, args)
 		}
@@ -77,20 +147,16 @@ func (c Conn) Do(commandName string, args ...interface{}) (reply interface{}, er
 
 // Send stores the command and arguments to be executed later (by the Receive function) in a first-
 // come first-served order
-func (c Conn) Send(commandName string, args ...interface{}) error {
-	queue = append(queue, struct {
-		commandName string
-		args        []interface{}
-	}{
+func (c *Conn) Send(commandName string, args ...interface{}) error {
+	c.queue = append(c.queue, queueElement{
 		commandName: commandName,
 		args:        args,
 	})
-
 	return nil
 }
 
 // Flush can be mocked using the Conn struct attributes
-func (c Conn) Flush() error {
+func (c *Conn) Flush() error {
 	if c.FlushMock == nil {
 		return nil
 	}
@@ -100,26 +166,16 @@ func (c Conn) Flush() error {
 
 // Receive will process the queue created by the Send method, only one item of the queue is
 // processed by Receive call. It will work as the Do method.
-func (c Conn) Receive() (reply interface{}, err error) {
+func (c *Conn) Receive() (reply interface{}, err error) {
 	if c.ReceiveWait {
 		<-c.ReceiveNow
 	}
 
-	if len(queue) == 0 {
+	if len(c.queue) == 0 {
 		return nil, fmt.Errorf("no more items")
 	}
 
-	reply, err = c.Do(queue[0].commandName, queue[0].args...)
-	queue = queue[1:]
+	reply, err = c.Do(c.queue[0].commandName, c.queue[0].args...)
+	c.queue = c.queue[1:]
 	return
-}
-
-// Clear removes all registered commands and empty the queue
-func Clear() {
-	queue = []struct {
-		commandName string
-		args        []interface{}
-	}{}
-
-	commands = []*Cmd{}
 }

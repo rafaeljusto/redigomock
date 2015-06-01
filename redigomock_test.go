@@ -51,14 +51,14 @@ func RetrievePeople(conn redis.Conn, ids []string) ([]Person, error) {
 }
 
 func TestDoCommand(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+	connection.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	})
 
-	person, err := RetrievePerson(NewConn(), "1")
+	person, err := RetrievePerson(connection, "1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,8 +73,9 @@ func TestDoCommand(t *testing.T) {
 }
 
 func TestDoCommandMultipleReturnValues(t *testing.T) {
-	commands = []*Cmd{}
-	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+	connection := NewConn()
+
+	connection.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	}).ExpectMap(map[string]string{
@@ -82,7 +83,7 @@ func TestDoCommandMultipleReturnValues(t *testing.T) {
 		"age":  "28",
 	}).ExpectError(fmt.Errorf("simulated error"))
 
-	person, err := RetrievePerson(NewConn(), "1")
+	person, err := RetrievePerson(connection, "1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +94,7 @@ func TestDoCommandMultipleReturnValues(t *testing.T) {
 		t.Errorf("Invalid age. Expected '42' and got '%d'", person.Age)
 	}
 
-	person, err = RetrievePerson(NewConn(), "1")
+	person, err = RetrievePerson(connection, "1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,21 +105,21 @@ func TestDoCommandMultipleReturnValues(t *testing.T) {
 		t.Errorf("Invalid age. Expected '28' and got '%d'", person.Age)
 	}
 
-	_, err = RetrievePerson(NewConn(), "1")
+	_, err = RetrievePerson(connection, "1")
 	if err == nil {
 		t.Error("Should return an error!")
 	}
 }
 
 func TestDoGenericCommand(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	GenericCommand("HGETALL").ExpectMap(map[string]string{
+	connection.GenericCommand("HGETALL").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	})
 
-	person, err := RetrievePerson(NewConn(), "1")
+	person, err := RetrievePerson(connection, "1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,19 +134,19 @@ func TestDoGenericCommand(t *testing.T) {
 }
 
 func TestDoCommandWithGeneric(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+	connection.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	})
 
-	GenericCommand("HGETALL").ExpectMap(map[string]string{
+	connection.GenericCommand("HGETALL").ExpectMap(map[string]string{
 		"name": "Mr. Mark",
 		"age":  "32",
 	})
 
-	person, err := RetrievePerson(NewConn(), "1")
+	person, err := RetrievePerson(connection, "1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,11 +161,11 @@ func TestDoCommandWithGeneric(t *testing.T) {
 }
 
 func TestDoCommandWithError(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	Command("HGETALL", "person:1").ExpectError(fmt.Errorf("simulated error"))
+	connection.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("simulated error"))
 
-	_, err := RetrievePerson(NewConn(), "1")
+	_, err := RetrievePerson(connection, "1")
 	if err == nil {
 		t.Error("Should return an error!")
 		return
@@ -172,9 +173,9 @@ func TestDoCommandWithError(t *testing.T) {
 }
 
 func TestDoCommandWithUnexpectedCommand(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	_, err := RetrievePerson(NewConn(), "X")
+	_, err := RetrievePerson(connection, "X")
 	if err == nil {
 		t.Error("Should detect a command not registered!")
 		return
@@ -182,30 +183,29 @@ func TestDoCommandWithUnexpectedCommand(t *testing.T) {
 }
 
 func TestDoCommandWithoutResponse(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	Command("HGETALL", "person:1")
+	connection.Command("HGETALL", "person:1")
 
-	_, err := RetrievePerson(NewConn(), "1")
+	_, err := RetrievePerson(connection, "1")
 	if err == nil {
 		t.Fatal("Returning an information when it shoudn't")
 	}
 }
 
 func TestSendFlushReceive(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+	connection.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	})
-	Command("HGETALL", "person:2").ExpectMap(map[string]string{
+	connection.Command("HGETALL", "person:2").ExpectMap(map[string]string{
 		"name": "Ms. Jennifer",
 		"age":  "28",
 	})
 
-	conn := NewConn()
-	people, err := RetrievePeople(conn, []string{"1", "2"})
+	people, err := RetrievePeople(connection, []string{"1", "2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,27 +222,25 @@ func TestSendFlushReceive(t *testing.T) {
 		t.Error("People age order are wrong")
 	}
 
-	if _, err := conn.Receive(); err == nil {
+	if _, err := connection.Receive(); err == nil {
 		t.Error("Not detecting when there's no more items to receive")
 	}
 }
 
 func TestSendReceiveWithWait(t *testing.T) {
-	commands = []*Cmd{}
-
-	Command("HGETALL", "person:1").ExpectMap(map[string]string{
-		"name": "Mr. Johson",
-		"age":  "42",
-	})
-	Command("HGETALL", "person:2").ExpectMap(map[string]string{
-		"name": "Ms. Jennifer",
-		"age":  "28",
-	})
-
 	conn := Conn{
 		ReceiveWait: true,
 		ReceiveNow:  make(chan bool),
 	}
+
+	conn.Command("HGETALL", "person:1").ExpectMap(map[string]string{
+		"name": "Mr. Johson",
+		"age":  "42",
+	})
+	conn.Command("HGETALL", "person:2").ExpectMap(map[string]string{
+		"name": "Ms. Jennifer",
+		"age":  "28",
+	})
 
 	ids := []string{"1", "2"}
 	for _, id := range ids {
@@ -287,19 +285,19 @@ func TestSendReceiveWithWait(t *testing.T) {
 }
 
 func TestSendFlushReceiveWithError(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+	connection.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	})
-	Command("HGETALL", "person:2").ExpectMap(map[string]string{
+	connection.Command("HGETALL", "person:2").ExpectMap(map[string]string{
 		"name": "Ms. Jennifer",
 		"age":  "28",
 	})
-	Command("HGETALL", "person:2").ExpectError(fmt.Errorf("simulated error"))
+	connection.Command("HGETALL", "person:2").ExpectError(fmt.Errorf("simulated error"))
 
-	_, err := RetrievePeople(NewConn(), []string{"1", "2", "3"})
+	_, err := RetrievePeople(connection, []string{"1", "2", "3"})
 	if err == nil {
 		t.Error("Not detecting error when using send/flush/receive")
 	}
@@ -346,32 +344,31 @@ func TestDummyFunctions(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	commands = []*Cmd{}
+	connection := NewConn()
 
-	Command("HGETALL", "person:1").ExpectMap(map[string]string{
+	connection.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	})
-	Command("HGETALL", "person:2").ExpectMap(map[string]string{
+	connection.Command("HGETALL", "person:2").ExpectMap(map[string]string{
 		"name": "Ms. Jennifer",
 		"age":  "28",
 	})
-	GenericCommand("HGETALL").ExpectMap(map[string]string{
+	connection.GenericCommand("HGETALL").ExpectMap(map[string]string{
 		"name": "Ms. Mark",
 		"age":  "32",
 	})
 
-	conn := NewConn()
-	conn.Send("HGETALL", "person:1")
-	conn.Send("HGETALL", "person:2")
+	connection.Send("HGETALL", "person:1")
+	connection.Send("HGETALL", "person:2")
 
-	Clear()
+	connection.Clear()
 
-	if len(commands) > 0 {
+	if len(connection.commands) > 0 {
 		t.Error("Clear function not clearing registered commands")
 	}
 
-	if len(queue) > 0 {
+	if len(connection.queue) > 0 {
 		t.Error("Clear function not clearing the queue")
 	}
 }

@@ -2,10 +2,6 @@ package redigomock
 
 import "reflect"
 
-var (
-	fuzzyCommands []*Cmd // Global variable that stores all registered  fuzzy commands
-)
-
 // FuzzyMatcher is an interface that exports exports one function. It can be passed to the Command as a argument.
 // When the command is evaluated agains data provided in mock connection Do call, FuzzyMatcher will call Match on the
 //argument and returns true if argument fulfils constraints set in concrete implementation .
