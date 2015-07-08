@@ -71,6 +71,7 @@ func main() {
 
 	// Simulate command error
 
+	conn.Clear()
 	conn.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulate error!"))
 
 	person, err = RetrievePerson(conn, "1")
