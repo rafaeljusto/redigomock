@@ -47,12 +47,13 @@ func RetrievePerson(conn redis.Conn, id string) (Person, error) {
 func main() {
 	// Simulate command result
 
-	redigomock.Command("HGETALL", "person:1").ExpectMap(map[string]string{
+	conn := redigomock.NewConn()
+	conn.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	})
 
-	person, err := RetrievePerson(redigomock.NewConn(), "1")
+	person, err := RetrievePerson(conn, "1")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -70,9 +71,9 @@ func main() {
 
 	// Simulate command error
 
-	redigomock.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulate error!"))
+	conn.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulate error!"))
 
-	person, err = RetrievePerson(redigomock.NewConn(), "1")
+	person, err = RetrievePerson(conn, "1")
 	if err == nil {
 		fmt.Println("Should return an error!")
 		return
