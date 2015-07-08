@@ -15,29 +15,29 @@
 // Now you can inject it whenever your system needs a redigo.Conn because it satisfies all interface
 // requirements. Before running your tests you need beyond of mocking the connection, registering
 // the expected results. For that you can generate commands with the expected results.
-//  redigomock.Command("HGETALL", "person:1").Expect("Person!")
-//  redigomock.Command(
+//  c.Command("HGETALL", "person:1").Expect("Person!")
+//  c.Command(
 //    "HMSET", []string{"person:1", "name", "John"},
 //  ).Expect("ok")
 //
 // As the Expect method from Command receives anything (interface{}), another method was created to
 // easy map the result to your structure. For that use ExpectMap:
-//  redigomock.Command("HGETALL", "person:1").ExpectMap(map[string]string{
+//  c.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 //    "name": "John",
 //    "age": 42,
 //  })
 //
 // You should also test the error cases, and you can do it in the same way of a normal result.
-//  redigomock.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Low level error!"))
+//  c.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Low level error!"))
 //
 // Sometimes you will want to register a command regardless the arguments, and you can do it with
 // the method GenericCommand (mainly with the HMSET).
-//  redigomock.GenericCommand("HMSET").Expect("ok")
+//  c.GenericCommand("HMSET").Expect("ok")
 //
 // All commands are registered in a global variable, so they will be there until all your test cases
 // ends. So for good practice in test writing you should in the beginning of each test case clear
 // the mock states.
-//  redigomock.Clear()
+//  c.Clear()
 //
 // Let's see a full test example. Imagine a Person structure and a function that pick up this
 // person in Redis using redigo library (file person.go):
@@ -75,13 +75,13 @@
 //  )
 //
 //  func TestRetrievePerson(t *testing.T) {
-//    redigomock.Clear()
-//	  redigomock.Command("HGETALL", "person:1").ExpectMap(map[string]string{
+//    conn := redigomock.NewConn()
+//	  conn.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 // 	    "name": "Mr. Johson",
 //      "age":  "42",
 //    })
 //
-//    person, err := RetrievePerson(redigomock.NewConn(), "1")
+//    person, err := RetrievePerson(conn, "1")
 //    if err != nil {
 // 	    t.Fatal(err)
 //    }
@@ -96,10 +96,10 @@
 //  }
 //
 //  func TestRetrievePersonError(t *testing.T) {
-//    redigomock.Clear()
-//    redigomock.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulate error!"))
+//    conn := redigomock.NewConn()
+//    conn.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulate error!"))
 //
-//    person, err = RetrievePerson(redigomock.NewConn(), "1")
+//    person, err = RetrievePerson(conn, "1")
 //    if err == nil {
 // 	    t.Error("Should return an error!")
 //    }
@@ -123,13 +123,13 @@
 //
 // To test it, you can chain redis responses. Let's write a test case
 //	func TestPollForData(t *testing.T) {
-// 	  	redigomock.Clear()
-// 	  	redigomock.Command("LPOP", "URLS").Expect("www.some.url.com").Expect("www.another.url.com").ExpectError(redis.ErrNil)
+// 	  	conn := redigomock.NewConn()
+// 	  	conn.Command("LPOP", "URLS").Expect("www.some.url.com").Expect("www.another.url.com").ExpectError(redis.ErrNil)
 //
-// 	  	err := PollForData(redigomock.NewConn())
-//		if err != redis.ErrNil {
-//			t.Error("This should return redis nil Error")
-//		}
+// 	  	err := PollForData(conn)
+// 	  	if err != redis.ErrNil {
+//			  t.Error("This should return redis nil Error")
+// 	  	}
 //	}
 //
 // In the first iteration of the loop redigomock would return "www.some.url.com", then "www.another.url.com" and finally redis.ErrNil
@@ -162,8 +162,9 @@
 //			Phone : "123456"
 //		}
 //
-//		redigomock.Commmand("HMSET", "person:1", "name", person.Name, "age", person.Age, "updatedat", redigomock.NewAnyInt(), "phone", person.Phone).Expect("OK!")
-//		err := UpdatePersonalData(redigomock.NewConn(), "1", person)
+//		conn := redigomock.NewConn()
+//		conn.Commmand("HMSET", "person:1", "name", person.Name, "age", person.Age, "updatedat", redigomock.NewAnyInt(), "phone", person.Phone).Expect("OK!")
+//		err := UpdatePersonalData(conn, "1", person)
 //		if err != nil {
 //			t.Error("This shouldn't return any errors")
 //		}
