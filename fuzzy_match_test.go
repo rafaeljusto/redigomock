@@ -3,14 +3,12 @@ package redigomock
 import "testing"
 
 func TestFuzzyCommandMatchAnyInt(t *testing.T) {
-
 	var fuzzyCommandTestInput = []struct {
 		arguments []interface{}
 		match     bool
 	}{
 		{[]interface{}{"TEST_COMMAND", "Test string", 1}, true},
 		{[]interface{}{"TEST_COMMAND", "Test string", 1234567}, true},
-
 		{[]interface{}{"TEST_COMMAND", 1, "Test string"}, false},
 		{[]interface{}{"TEST_COMMAND", "Test string", 1, 1}, false},
 		{[]interface{}{"TEST_COMMAND", "AnotherString", 1}, false},
@@ -25,6 +23,7 @@ func TestFuzzyCommandMatchAnyInt(t *testing.T) {
 		Name: "TEST_COMMAND",
 		Args: []interface{}{"Test string", NewAnyInt()},
 	}
+
 	for pos, element := range fuzzyCommandTestInput {
 		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
 			t.Fatalf("comparing fuzzy comand failed. Comparison between comand [%#v] and test arguments : [%#v] at position %v returned %v while it should have returned %v",
@@ -34,14 +33,12 @@ func TestFuzzyCommandMatchAnyInt(t *testing.T) {
 }
 
 func TestFuzzyCommandMatchAnyDouble(t *testing.T) {
-
 	var fuzzyCommandTestInput = []struct {
 		arguments []interface{}
 		match     bool
 	}{
 		{[]interface{}{"TEST_COMMAND", "Test string", 1.123}, true},
 		{[]interface{}{"TEST_COMMAND", "Test string", 1234567.89}, true},
-
 		{[]interface{}{"TEST_COMMAND", 1.0, "Test string"}, false},
 		{[]interface{}{"TEST_COMMAND", "Test string", 1.123, 11.22}, false},
 		{[]interface{}{"TEST_COMMAND", "AnotherString", 1.1111}, false},
@@ -56,6 +53,7 @@ func TestFuzzyCommandMatchAnyDouble(t *testing.T) {
 		Name: "TEST_COMMAND",
 		Args: []interface{}{"Test string", NewAnyDouble()},
 	}
+
 	for pos, element := range fuzzyCommandTestInput {
 		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
 			t.Errorf("comparing fuzzy comand failed. Comparison between comand [%+v] and test arguments : [%v] at position %v returned %v while it should have returned %v",
@@ -80,6 +78,7 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 		Name: "TEST_COMMAND",
 		Args: []interface{}{"Test string", NewAnyData()},
 	}
+
 	for pos, element := range fuzzyCommandTestInput {
 		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
 			t.Errorf("comparing fuzzy comand failed. Comparison between comand [%+v] and test arguments : [%v] at position %v returned %v while it should have returned %v",
@@ -90,7 +89,6 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 
 func TestFindWithFuzzy(t *testing.T) {
 	connection := NewConn()
-
 	connection.Command("HGETALL", NewAnyInt(), NewAnyDouble(), "Test string")
 
 	if connection.find("HGETALL", []interface{}{1, 2.0}) != nil {
@@ -116,10 +114,10 @@ func TestFindWithFuzzy(t *testing.T) {
 
 func TestRemoveRelatedFuzzyCommands(t *testing.T) {
 	connection := NewConn()
-
 	connection.Command("HGETALL", 1, 2.0, "c")                // saved , non fuzzy
 	connection.Command("HGETALL", NewAnyInt(), 2.0, "c")      // saved , fuzzy
 	connection.Command("HGETALL", NewAnyInt(), 2.0, "c")      // not saved!! , fuzzy
+	connection.Command("HGETALL", NewAnyDouble(), 2.0, "c")   // saved , fuzzy
 	connection.Command("COMMAND2", NewAnyInt(), 2.0, "c")     // saved , fuzzy
 	connection.Command("HGETALL", NewAnyInt(), 5.0, "c")      // saved, fuzzy
 	connection.Command("HGETALL", NewAnyInt(), 2.0, "d")      // saved, fuzzy
@@ -127,7 +125,7 @@ func TestRemoveRelatedFuzzyCommands(t *testing.T) {
 	connection.Command("HGETALL", NewAnyInt(), 2.0, "c", "d") // saved, fuzzy
 	connection.Command("HGETALL", 1, NewAnyDouble(), "c")     // saved, fuzzy
 
-	if len(connection.commands) != 8 {
-		t.Errorf("Non fuzzy command cound invalid, expected 8, got %d", len(connection.commands))
+	if len(connection.commands) != 9 {
+		t.Errorf("Non fuzzy command cound invalid, expected 9, got %d", len(connection.commands))
 	}
 }
