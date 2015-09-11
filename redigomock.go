@@ -15,7 +15,8 @@ type queueElement struct {
 	args        []interface{}
 }
 
-// Conn is the struct that can be used where you inject the redigo.Conn on your project
+// Conn is the struct that can be used where you inject the redigo.Conn on
+// your project
 type Conn struct {
 	ReceiveWait bool           // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
 	ReceiveNow  chan bool      // Used to lock Receive method to simulate a PubSub scenario
@@ -26,8 +27,8 @@ type Conn struct {
 	queue       []queueElement //Slice that stores all queued commands for each connection
 }
 
-// NewConn returns a new mocked connection. Obviously as we are mocking we don't need any Redis
-// conneciton parameter
+// NewConn returns a new mocked connection. Obviously as we are mocking we
+// don't need any Redis connection parameter
 func NewConn() *Conn {
 	return &Conn{
 		ReceiveNow: make(chan bool),
@@ -52,8 +53,9 @@ func (c *Conn) Err() error {
 	return c.ErrMock()
 }
 
-// Command register a command in the mock system using the same arguments of a Do or Send commands.
-// It will return a registered command object where you can set the response or error
+// Command register a command in the mock system using the same arguments of
+// a Do or Send commands. It will return a registered command object where
+// you can set the response or error
 func (c *Conn) Command(commandName string, args ...interface{}) *Cmd {
 	cmd := &Cmd{
 		Name: commandName,
@@ -64,9 +66,9 @@ func (c *Conn) Command(commandName string, args ...interface{}) *Cmd {
 	return cmd
 }
 
-// Script registers a command in the mock system just like Command method would do
-// The first argument is a byte array with the script text, next ones are the ones
-// you would pass to redis Script.Do() method
+// Script registers a command in the mock system just like Command method
+// would do. The first argument is a byte array with the script text, next
+// ones are the ones you would pass to redis Script.Do() method
 func (c *Conn) Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd {
 	h := sha1.New()
 	h.Write(scriptData)
@@ -80,8 +82,9 @@ func (c *Conn) Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd
 	return c.Command("EVALSHA", newArgs...)
 }
 
-// GenericCommand register a command without arguments. If a command with arguments doesn't match
-// with any registered command, it will look for generic commands before throwing an error
+// GenericCommand register a command without arguments. If a command with
+// arguments doesn't match with any registered command, it will look for
+// generic commands before throwing an error
 func (c *Conn) GenericCommand(commandName string) *Cmd {
 	cmd := &Cmd{
 		Name: commandName,
@@ -92,8 +95,8 @@ func (c *Conn) GenericCommand(commandName string) *Cmd {
 	return cmd
 }
 
-//find will scan the registered commands, looking for the first command with the same name and
-//arguments. If the command is not found nil is returned
+// find will scan the registered commands, looking for the first command with
+// the same name and arguments. If the command is not found nil is returned
 func (c *Conn) find(commandName string, args []interface{}) *Cmd {
 	for _, cmd := range c.commands {
 		if match(commandName, args, cmd) {
@@ -103,13 +106,15 @@ func (c *Conn) find(commandName string, args []interface{}) *Cmd {
 	return nil
 }
 
-// removeRelatedCommands verify if a command is already registered, removing any command already
-// registered with the same name and arguments. This should avoid duplicated mocked commands
+// removeRelatedCommands verify if a command is already registered, removing
+// any command already registered with the same name and arguments. This
+// should avoid duplicated mocked commands
 func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
 	var unique []*Cmd
 
 	for _, cmd := range c.commands {
-		// New array will contain only commands that are not related to the given one
+		// new array will contain only commands that are not related to the given
+		// one
 		if !equal(commandName, args, cmd) {
 			unique = append(unique, cmd)
 		}
@@ -117,14 +122,17 @@ func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
 	c.commands = unique
 }
 
+// Clear removes all registered commands. Useful for connection reuse in test
+// scenarios
 func (c *Conn) Clear() {
 	c.commands = []*Cmd{}
 	c.queue = []queueElement{}
 }
 
-// Do looks in the registered commands (via Command function) if someone matchs with the given
-// command name and arguments, if so the corresponding response or error is returned. If no
-// registered command is found an error is returned
+// Do looks in the registered commands (via Command function) if someone
+// matches with the given command name and arguments, if so the corresponding
+// response or error is returned. If no registered command is found an error
+// is returned
 func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
 	cmd := c.find(commandName, args)
 	if cmd == nil {
@@ -145,8 +153,8 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 
 }
 
-// Send stores the command and arguments to be executed later (by the Receive function) in a first-
-// come first-served order
+// Send stores the command and arguments to be executed later (by the Receive
+// function) in a first-come first-served order
 func (c *Conn) Send(commandName string, args ...interface{}) error {
 	c.queue = append(c.queue, queueElement{
 		commandName: commandName,
@@ -164,8 +172,8 @@ func (c *Conn) Flush() error {
 	return c.FlushMock()
 }
 
-// Receive will process the queue created by the Send method, only one item of the queue is
-// processed by Receive call. It will work as the Do method.
+// Receive will process the queue created by the Send method, only one item
+// of the queue is processed by Receive call. It will work as the Do method
 func (c *Conn) Receive() (reply interface{}, err error) {
 	if c.ReceiveWait {
 		<-c.ReceiveNow

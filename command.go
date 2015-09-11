@@ -12,15 +12,15 @@ type Response struct {
 	Error    error       // Error to send back when this command/arguments are called
 }
 
-// Cmd stores the registered information about a command to return it later when request by a
-// command execution
+// Cmd stores the registered information about a command to return it later
+// when request by a command execution
 type Cmd struct {
 	Name      string        // Name of the command
 	Args      []interface{} // Arguments of the command
 	Responses []Response    // Slice of returned responses
 }
 
-// match verify if a command/argumets is related to a registered command.
+// equal verify if a command/argumets is related to a registered command
 func equal(commandName string, args []interface{}, cmd *Cmd) bool {
 	if commandName != cmd.Name || len(args) != len(cmd.Args) {
 		return false
@@ -42,7 +42,8 @@ func equal(commandName string, args []interface{}, cmd *Cmd) bool {
 	return true
 }
 
-//match check if provided arguments can be matched with any registered commands
+// match check if provided arguments can be matched with any registered
+// commands
 func match(commandName string, args []interface{}, cmd *Cmd) bool {
 	if commandName != cmd.Name || len(args) != len(cmd.Args) {
 		return false
@@ -61,17 +62,18 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 	return true
 }
 
-// Expect sets a response for this command. Everytime a Do or Receive methods are executed for a
-// registered command this response or error will be returned. Expect call returns a pointer to Cmd struct,
-// so you can chain Expect calls. Chained responses will be returned on subsequend calls matching this commands arguments
-// in FIFO order.
+// Expect sets a response for this command. Everytime a Do or Receive methods
+// are executed for a registered command this response or error will be
+// returned. Expect call returns a pointer to Cmd struct, so you can chain
+// Expect calls. Chained responses will be returned on subsequent calls
+// matching this commands arguments in FIFO order
 func (c *Cmd) Expect(response interface{}) *Cmd {
 	c.Responses = append(c.Responses, Response{response, nil})
 	return c
 }
 
-// ExpectMap works in the same way of the Expect command, but has a key/value input to make it
-// easier to build test environments
+// ExpectMap works in the same way of the Expect command, but has a key/value
+// input to make it easier to build test environments
 func (c *Cmd) ExpectMap(response map[string]string) *Cmd {
 	var values []interface{}
 	for key, value := range response {
@@ -82,7 +84,8 @@ func (c *Cmd) ExpectMap(response map[string]string) *Cmd {
 	return c
 }
 
-// ExpectError allows you to force an error when executing a command/arguments
+// ExpectError allows you to force an error when executing a
+// command/arguments
 func (c *Cmd) ExpectError(err error) *Cmd {
 	c.Responses = append(c.Responses, Response{nil, err})
 	return c
