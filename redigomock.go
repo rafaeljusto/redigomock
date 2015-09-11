@@ -18,13 +18,14 @@ type queueElement struct {
 // Conn is the struct that can be used where you inject the redigo.Conn on
 // your project
 type Conn struct {
-	ReceiveWait bool           // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
-	ReceiveNow  chan bool      // Used to lock Receive method to simulate a PubSub scenario
-	CloseMock   func() error   // Mock the redigo Close method
-	ErrMock     func() error   // Mock the redigo Err method
-	FlushMock   func() error   // Mock the redigo Flush method
-	commands    []*Cmd         // Slice that stores all registered commands for each connection
-	queue       []queueElement //Slice that stores all queued commands for each connection
+	ReceiveWait bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
+	ReceiveNow  chan bool       // Used to lock Receive method to simulate a PubSub scenario
+	CloseMock   func() error    // Mock the redigo Close method
+	ErrMock     func() error    // Mock the redigo Err method
+	FlushMock   func() error    // Mock the redigo Flush method
+	commands    []*Cmd          // Slice that stores all registered commands for each connection
+	queue       []queueElement  // Slice that stores all queued commands for each connection
+	stats       map[cmdHash]int // Command calls counter
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -32,6 +33,7 @@ type Conn struct {
 func NewConn() *Conn {
 	return &Conn{
 		ReceiveNow: make(chan bool),
+		stats:      make(map[cmdHash]int),
 	}
 }
 
@@ -147,6 +149,7 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 		return nil, nil
 	}
 
+	c.stats[cmd.hash()]++
 	response := cmd.Responses[0]
 	cmd.Responses = cmd.Responses[1:]
 	return response.Response, response.Error
@@ -186,4 +189,10 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 	reply, err = c.Do(c.queue[0].commandName, c.queue[0].args...)
 	c.queue = c.queue[1:]
 	return
+}
+
+// Stats returns the number of times that a command was called in the current
+// connection
+func (c Conn) Stats(cmd *Cmd) int {
+	return c.stats[cmd.hash()]
 }

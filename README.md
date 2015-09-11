@@ -48,7 +48,7 @@ func main() {
 	// Simulate command result
 
 	conn := redigomock.NewConn()
-	conn.Command("HGETALL", "person:1").ExpectMap(map[string]string{
+	cmd := conn.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
 		"age":  "42",
 	})
@@ -56,6 +56,11 @@ func main() {
 	person, err := RetrievePerson(conn, "1")
 	if err != nil {
 		fmt.Println(err)
+		return
+	}
+
+	if conn.Stats(cmd) != 1 {
+		fmt.Println("Command was not used")
 		return
 	}
 
@@ -72,11 +77,16 @@ func main() {
 	// Simulate command error
 
 	conn.Clear()
-	conn.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulate error!"))
+	cmd = conn.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("Simulate error!"))
 
 	person, err = RetrievePerson(conn, "1")
 	if err == nil {
 		fmt.Println("Should return an error!")
+		return
+	}
+
+	if conn.Stats(cmd) != 1 {
+		fmt.Println("Command was not used")
 		return
 	}
 

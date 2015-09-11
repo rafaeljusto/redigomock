@@ -5,7 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased][unreleased]
 ### Added
 - Fuzzy matching for redigomock command arguments
-- Make commands a property of a connection object, which allows to run tests in pararell
+- Make commands a property of a connection object, which allows to run tests in parallel
+- Commands calls counters, which allows to identify unused mocked commands (thanks to @rylnd)
 
 ## [1.0.0] - 2015-04-23
 ### Added
