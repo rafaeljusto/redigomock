@@ -344,62 +344,84 @@ func TestRemoveRelatedCommands(t *testing.T) {
 
 func TestMatch(t *testing.T) {
 	data := []struct {
-		Cmd         *Cmd
-		CommandName string
-		Args        []interface{}
-		Equal       bool
+		cmd         *Cmd
+		commandName string
+		args        []interface{}
+		equal       bool
 	}{
 		{
-			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
-			CommandName: "HGETALL",
-			Args:        []interface{}{"a", "b", "c"},
-			Equal:       true,
+			cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			commandName: "HGETALL",
+			args:        []interface{}{"a", "b", "c"},
+			equal:       true,
 		},
 		{
-			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", []byte("abcdef"), "c"}},
-			CommandName: "HGETALL",
-			Args:        []interface{}{"a", []byte("abcdef"), "c"},
-			Equal:       true,
+			cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", []byte("abcdef"), "c"}},
+			commandName: "HGETALL",
+			args:        []interface{}{"a", []byte("abcdef"), "c"},
+			equal:       true,
 		},
 		{
-			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
-			CommandName: "HGETALL",
-			Args:        []interface{}{"c", "b", "a"},
-			Equal:       false,
+			cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			commandName: "HGETALL",
+			args:        []interface{}{"c", "b", "a"},
+			equal:       false,
 		},
 		{
-			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
-			CommandName: "HGETALL",
-			Args:        []interface{}{"a", "b"},
-			Equal:       false,
+			cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			commandName: "HGETALL",
+			args:        []interface{}{"a", "b"},
+			equal:       false,
 		},
 		{
-			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b"}},
-			CommandName: "HGETALL",
-			Args:        []interface{}{"a", "b", "c"},
-			Equal:       false,
+			cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b"}},
+			commandName: "HGETALL",
+			args:        []interface{}{"a", "b", "c"},
+			equal:       false,
 		},
 		{
-			Cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
-			CommandName: "HSETALL",
-			Args:        []interface{}{"a", "b", "c"},
-			Equal:       false,
+			cmd:         &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			commandName: "HSETALL",
+			args:        []interface{}{"a", "b", "c"},
+			equal:       false,
 		},
 		{
-			Cmd:         &Cmd{Name: "HSETALL", Args: nil},
-			CommandName: "HSETALL",
-			Args:        nil,
-			Equal:       true,
+			cmd:         &Cmd{Name: "HSETALL", Args: nil},
+			commandName: "HSETALL",
+			args:        nil,
+			equal:       true,
 		},
 	}
 
 	for i, item := range data {
-		e := match(item.CommandName, item.Args, item.Cmd)
-		if e != item.Equal && item.Equal {
+		e := match(item.commandName, item.args, item.cmd)
+		if e != item.equal && item.equal {
 			t.Errorf("Expected commands to be equal for data item '%d'", i)
 
-		} else if e != item.Equal && !item.Equal {
+		} else if e != item.equal && !item.equal {
 			t.Errorf("Expected commands to be different for data item '%d'", i)
+		}
+	}
+}
+
+func TestHash(t *testing.T) {
+	data := []struct {
+		cmd      *Cmd
+		expected cmdHash
+	}{
+		{
+			cmd:      &Cmd{Name: "HGETALL", Args: []interface{}{"a", "b", "c"}},
+			expected: cmdHash("HGETALLabc"),
+		},
+		{
+			cmd:      &Cmd{Name: "HGETALL", Args: []interface{}{"a", []byte("abcdef"), "c"}},
+			expected: "HGETALLa[97 98 99 100 101 102]c",
+		},
+	}
+
+	for i, item := range data {
+		if hash := item.cmd.hash(); hash != item.expected {
+			t.Errorf("Expected “%s” and got “%s” for data item “%d”", item.expected, hash, i)
 		}
 	}
 }

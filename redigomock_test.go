@@ -2,6 +2,7 @@ package redigomock
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -228,10 +229,8 @@ func TestSendFlushReceive(t *testing.T) {
 }
 
 func TestSendReceiveWithWait(t *testing.T) {
-	conn := Conn{
-		ReceiveWait: true,
-		ReceiveNow:  make(chan bool),
-	}
+	conn := NewConn()
+	conn.ReceiveWait = true
 
 	conn.Command("HGETALL", "person:1").ExpectMap(map[string]string{
 		"name": "Mr. Johson",
@@ -248,6 +247,7 @@ func TestSendReceiveWithWait(t *testing.T) {
 	}
 
 	var people []Person
+	var peopleLock sync.RWMutex
 
 	go func() {
 		for i := 0; i < len(ids); i++ {
@@ -262,7 +262,9 @@ func TestSendReceiveWithWait(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			peopleLock.Lock()
 			people = append(people, person)
+			peopleLock.Unlock()
 		}
 	}()
 
@@ -270,6 +272,9 @@ func TestSendReceiveWithWait(t *testing.T) {
 		conn.ReceiveNow <- true
 	}
 	time.Sleep(10 * time.Millisecond)
+
+	peopleLock.RLock()
+	defer peopleLock.RUnlock()
 
 	if len(people) != 2 {
 		t.Fatalf("Wrong number of people. Expected '2' and got '%d'", len(people))
@@ -370,5 +375,38 @@ func TestClear(t *testing.T) {
 
 	if len(connection.queue) > 0 {
 		t.Error("Clear function not clearing the queue")
+	}
+}
+
+func TestStats(t *testing.T) {
+	connection := NewConn()
+
+	cmd1 := connection.Command("HGETALL", "person:1").ExpectMap(map[string]string{
+		"name": "Mr. Johson",
+		"age":  "42",
+	}).ExpectMap(map[string]string{
+		"name": "Mr. Johson",
+		"age":  "42",
+	})
+
+	cmd2 := connection.Command("HGETALL", "person:2").ExpectMap(map[string]string{
+		"name": "Mr. Larry",
+		"age":  "27",
+	})
+
+	if _, err := RetrievePerson(connection, "1"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RetrievePerson(connection, "1"); err != nil {
+		t.Fatal(err)
+	}
+
+	if counter := connection.Stats(cmd1); counter != 2 {
+		t.Errorf("Expected command cmd1 to be called 2 times, but it was called %d times", counter)
+	}
+
+	if counter := connection.Stats(cmd2); counter != 0 {
+		t.Errorf("Expected command cmd2 to don't be called, but it was called %d times", counter)
 	}
 }

@@ -4,7 +4,10 @@
 
 package redigomock
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 // Response struct that represents single response from `Do` call
 type Response struct {
@@ -19,6 +22,9 @@ type Cmd struct {
 	Args      []interface{} // Arguments of the command
 	Responses []Response    // Slice of returned responses
 }
+
+// cmdHash stores a unique identifier of the command
+type cmdHash string
 
 // equal verify if a command/argumets is related to a registered command
 func equal(commandName string, args []interface{}, cmd *Cmd) bool {
@@ -89,4 +95,13 @@ func (c *Cmd) ExpectMap(response map[string]string) *Cmd {
 func (c *Cmd) ExpectError(err error) *Cmd {
 	c.Responses = append(c.Responses, Response{nil, err})
 	return c
+}
+
+// hash generates a unique identifier for the command
+func (c Cmd) hash() cmdHash {
+	output := c.Name
+	for _, arg := range c.Args {
+		output += fmt.Sprintf("%v", arg)
+	}
+	return cmdHash(output)
 }
