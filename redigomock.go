@@ -153,11 +153,12 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 		}
 	}
 
+	c.stats[cmd.hash()]++
+
 	if len(cmd.Responses) == 0 {
 		return nil, nil
 	}
 
-	c.stats[cmd.hash()]++
 	response := cmd.Responses[0]
 	cmd.Responses = cmd.Responses[1:]
 	return response.Response, response.Error
