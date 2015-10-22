@@ -136,6 +136,14 @@ func (c *Conn) Clear() {
 // response or error is returned. If no registered command is found an error
 // is returned
 func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
+	queueLength := len(c.queue)
+	if queueLength > 0 {
+		// Process the queued commands first
+		cmd := c.queue[0]
+		c.queue = c.queue[1:]
+		reply, err = c.Do(cmd.commandName, cmd.args...)
+	}
+
 	cmd := c.find(commandName, args)
 	if cmd == nil {
 		// Didn't find a specific command, try to get a generic one
