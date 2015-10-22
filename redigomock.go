@@ -195,7 +195,27 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		return nil, fmt.Errorf("no more items")
 	}
 
-	reply, err = c.Do(c.queue[0].commandName, c.queue[0].args...)
+	commandName, args := c.queue[0].commandName, c.queue[0].args
+	cmd := c.find(commandName, args)
+	if cmd == nil {
+		// Didn't find a specific command, try to get a generic one
+		if cmd = c.find(commandName, nil); cmd == nil {
+			return nil, fmt.Errorf("command %s with arguments %#v not registered in redigomock library",
+				commandName, args)
+		}
+	}
+
+	c.stats[cmd.hash()]++
+
+	if len(cmd.Responses) == 0 {
+		reply, err = nil, nil
+	} else {
+		response := cmd.Responses[0]
+		cmd.Responses = cmd.Responses[1:]
+
+		reply, err = response.Response, response.Error
+	}
+
 	c.queue = c.queue[1:]
 	return
 }
