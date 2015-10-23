@@ -136,6 +136,14 @@ func (c *Conn) Clear() {
 // response or error is returned. If no registered command is found an error
 // is returned
 func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
+	queueLength := len(c.queue)
+	if queueLength > 0 {
+		// Process the queued commands first
+		cmd := c.queue[0]
+		c.queue = c.queue[1:]
+		reply, err = c.Do(cmd.commandName, cmd.args...)
+	}
+
 	cmd := c.find(commandName, args)
 	if cmd == nil {
 		// Didn't find a specific command, try to get a generic one
@@ -145,11 +153,12 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 		}
 	}
 
+	c.stats[cmd.hash()]++
+
 	if len(cmd.Responses) == 0 {
 		return nil, nil
 	}
 
-	c.stats[cmd.hash()]++
 	response := cmd.Responses[0]
 	cmd.Responses = cmd.Responses[1:]
 	return response.Response, response.Error
@@ -186,7 +195,27 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		return nil, fmt.Errorf("no more items")
 	}
 
-	reply, err = c.Do(c.queue[0].commandName, c.queue[0].args...)
+	commandName, args := c.queue[0].commandName, c.queue[0].args
+	cmd := c.find(commandName, args)
+	if cmd == nil {
+		// Didn't find a specific command, try to get a generic one
+		if cmd = c.find(commandName, nil); cmd == nil {
+			return nil, fmt.Errorf("command %s with arguments %#v not registered in redigomock library",
+				commandName, args)
+		}
+	}
+
+	c.stats[cmd.hash()]++
+
+	if len(cmd.Responses) == 0 {
+		reply, err = nil, nil
+	} else {
+		response := cmd.Responses[0]
+		cmd.Responses = cmd.Responses[1:]
+
+		reply, err = response.Response, response.Error
+	}
+
 	c.queue = c.queue[1:]
 	return
 }

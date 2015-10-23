@@ -410,3 +410,90 @@ func TestStats(t *testing.T) {
 		t.Errorf("Expected command cmd2 to don't be called, but it was called %d times", counter)
 	}
 }
+
+func TestDoFlushesQueue(t *testing.T) {
+	connection := NewConn()
+
+	cmd1 := connection.Command("MULTI")
+	cmd2 := connection.Command("SET", "person-123", 123456)
+	cmd3 := connection.Command("EXPIRE", "person-123", 1000)
+	cmd4 := connection.Command("EXEC").Expect([]interface{}{"OK", "OK"})
+
+	connection.Send("MULTI")
+	connection.Send("SET", "person-123", 123456)
+	connection.Send("EXPIRE", "person-123", 1000)
+	connection.Do("EXEC")
+
+	if counter := connection.Stats(cmd1); counter != 1 {
+		t.Errorf("Expected cmd1 to be called once but was called %d times", counter)
+	}
+
+	if counter := connection.Stats(cmd2); counter != 1 {
+		t.Errorf("Expected cmd2 to be called once but was called %d times", counter)
+	}
+
+	if counter := connection.Stats(cmd3); counter != 1 {
+		t.Errorf("Expected cmd3 to be called once but was called %d times", counter)
+	}
+
+	if counter := connection.Stats(cmd4); counter != 1 {
+		t.Errorf("Expected cmd4 to be called once but was called %d times", counter)
+	}
+}
+
+func TestReceiveFallsBackOnGenericCommands(t *testing.T) {
+	connection := NewConn()
+
+	cmd1 := connection.Command("MULTI")
+	cmd2 := connection.GenericCommand("SET")
+	cmd3 := connection.GenericCommand("EXPIRE")
+	cmd4 := connection.Command("EXEC")
+
+	connection.Send("MULTI")
+	connection.Send("SET", "person-123", 123456)
+	connection.Send("EXPIRE", "person-123", 1000)
+	connection.Send("EXEC")
+
+	connection.Flush()
+
+	connection.Receive()
+	connection.Receive()
+	connection.Receive()
+	connection.Receive()
+
+	if counter := connection.Stats(cmd1); counter != 1 {
+		t.Errorf("Expected cmd1 to be called once but was called %d times", counter)
+	}
+
+	if counter := connection.Stats(cmd2); counter != 1 {
+		t.Errorf("Expected cmd2 to be called once but was called %d times", counter)
+	}
+
+	if counter := connection.Stats(cmd3); counter != 1 {
+		t.Errorf("Expected cmd3 to be called once but was called %d times", counter)
+	}
+
+	if counter := connection.Stats(cmd4); counter != 1 {
+		t.Errorf("Expected cmd4 to be called once but was called %d times", counter)
+	}
+}
+
+func TestReceiveReturnsErrorWithNoRegisteredCommand(t *testing.T) {
+	connection := NewConn()
+
+	connection.Command("SET", "person-123", "Councilman Jamm")
+
+	connection.Send("GET", "person-123")
+
+	connection.Flush()
+
+	resp, err := connection.Receive()
+
+	if err == nil {
+		t.Errorf("Should have received an error when calling Receive with a command in the queue that was not registered")
+	}
+
+	if resp != nil {
+		t.Errorf("Should have returned a nil response when calling Receive with a command in the queue that was not registered")
+	}
+}
