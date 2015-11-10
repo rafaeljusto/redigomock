@@ -63,6 +63,11 @@ func (c *Conn) Command(commandName string, args ...interface{}) *Cmd {
 		Name: commandName,
 		Args: args,
 	}
+	for _, a := range args {
+		if any, ok := a.(anyData); ok {
+			cmd.ignoreArgsLength = any.ignoreArgsLength
+		}
+	}
 	c.removeRelatedCommands(commandName, args)
 	c.commands = append(c.commands, cmd)
 	return cmd

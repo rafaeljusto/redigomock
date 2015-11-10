@@ -18,10 +18,11 @@ type Response struct {
 // Cmd stores the registered information about a command to return it later
 // when request by a command execution
 type Cmd struct {
-	Name      string        // Name of the command
-	Args      []interface{} // Arguments of the command
-	Responses []Response    // Slice of returned responses
-	Callback  callback
+	Name             string        // Name of the command
+	Args             []interface{} // Arguments of the command
+	Responses        []Response    // Slice of returned responses
+	Callback         callback      // Callback will always be called, Responses ignored
+	ignoreArgsLength bool
 }
 
 // cmdHash stores a unique identifier of the command
@@ -32,7 +33,7 @@ type callback func(args []interface{}) (interface{}, error)
 
 // equal verify if a command/argumets is related to a registered command
 func equal(commandName string, args []interface{}, cmd *Cmd) bool {
-	if commandName != cmd.Name || len(args) != len(cmd.Args) {
+	if commandName != cmd.Name || (!cmd.ignoreArgsLength && len(args) != len(cmd.Args)) {
 		return false
 	}
 
@@ -55,7 +56,7 @@ func equal(commandName string, args []interface{}, cmd *Cmd) bool {
 // match check if provided arguments can be matched with any registered
 // commands
 func match(commandName string, args []interface{}, cmd *Cmd) bool {
-	if commandName != cmd.Name || len(args) != len(cmd.Args) {
+	if commandName != cmd.Name || (!cmd.ignoreArgsLength && len(args) != len(cmd.Args)) {
 		return false
 	}
 
