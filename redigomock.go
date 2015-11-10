@@ -155,14 +155,16 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 
 	c.stats[cmd.hash()]++
 
+	if cmd.Callback != nil {
+		return cmd.Callback(args)
+	}
+
 	if len(cmd.Responses) == 0 {
 		return nil, nil
 	}
-
 	response := cmd.Responses[0]
 	cmd.Responses = cmd.Responses[1:]
 	return response.Response, response.Error
-
 }
 
 // Send stores the command and arguments to be executed later (by the Receive
@@ -207,12 +209,15 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 
 	c.stats[cmd.hash()]++
 
+	if cmd.Callback != nil {
+		return cmd.Callback(args)
+	}
+
 	if len(cmd.Responses) == 0 {
 		reply, err = nil, nil
 	} else {
 		response := cmd.Responses[0]
 		cmd.Responses = cmd.Responses[1:]
-
 		reply, err = response.Response, response.Error
 	}
 

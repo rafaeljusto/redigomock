@@ -21,10 +21,14 @@ type Cmd struct {
 	Name      string        // Name of the command
 	Args      []interface{} // Arguments of the command
 	Responses []Response    // Slice of returned responses
+	Callback  callback
 }
 
 // cmdHash stores a unique identifier of the command
 type cmdHash string
+
+// callback as response
+type callback func(args []interface{}) (interface{}, error)
 
 // equal verify if a command/argumets is related to a registered command
 func equal(commandName string, args []interface{}, cmd *Cmd) bool {
@@ -75,6 +79,12 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 // matching this commands arguments in FIFO order
 func (c *Cmd) Expect(response interface{}) *Cmd {
 	c.Responses = append(c.Responses, Response{response, nil})
+	return c
+}
+
+// ExpectCallback register callback function to return response result
+func (c *Cmd) ExpectCallback(cb callback) *Cmd {
+	c.Callback = cb
 	return c
 }
 
