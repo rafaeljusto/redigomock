@@ -34,13 +34,15 @@ func assertError(t *testing.T, err error) {
 	}
 }
 
-func assertStrings(t *testing.T, result []string, expected []string) {
+func assertStrings(t *testing.T, result []string, expected []string, sorting bool) {
 	r := make([]string, 0, len(result))
 	e := make([]string, 0, len(expected))
 	copy(r, result)
 	copy(e, expected)
-	sort.Strings(r)
-	sort.Strings(e)
+	if sorting {
+		sort.Strings(r)
+		sort.Strings(e)
+	}
 	if len(expected) != len(result) {
 		t.Errorf("Excpected '%s', got '%s'", expected, result)
 		return
@@ -56,9 +58,9 @@ func assertStrings(t *testing.T, result []string, expected []string) {
 func TestFlushDb(t *testing.T) {
 	c := NewFakeRedis()
 	redis.String(c.Do("SET", "foo", "bar"))
-	assertStrings(t, must(redis.Strings(c.Do("KEYS", "foo"))).([]string), []string{"foo"})
+	assertStrings(t, must(redis.Strings(c.Do("KEYS", "foo"))).([]string), []string{"foo"}, false)
 	c.Do("FLUSHDB")
-	assertStrings(t, must(redis.Strings(c.Do("KEYS", "foo"))).([]string), []string{})
+	assertStrings(t, must(redis.Strings(c.Do("KEYS", "foo"))).([]string), []string{}, false)
 }
 
 func TestSetThenGet(t *testing.T) {
@@ -88,25 +90,35 @@ func TestSADD(t *testing.T) {
 	c := NewFakeRedis()
 	assertInt(t, must(redis.Int(c.Do("SADD", "foo", "member1"))), 1)
 	assertInt(t, must(redis.Int(c.Do("SADD", "foo", "member1"))), 0)
-	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1"})
+	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1"}, true)
 	assertInt(t, must(redis.Int(c.Do("SADD", "foo", "member2", "member3"))), 2)
-	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1", "member2", "member3"})
+	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1", "member2", "member3"}, true)
 	assertInt(t, must(redis.Int(c.Do("SADD", "foo", "member3", "member4"))), 1)
-	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1", "member2", "member3", "member4"})
+	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1", "member2", "member3", "member4"}, true)
 }
 
 func TestSREM(t *testing.T) {
 	c := NewFakeRedis()
 	c.Do("SADD", "foo", "member1", "member2", "member3", "member4")
-	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1", "member2", "member3", "member4"})
+	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1", "member2", "member3", "member4"}, true)
 	assertInt(t, must(redis.Int(c.Do("SREM", "foo", "member1"))), 1)
-	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member2", "member3", "member4"})
+	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member2", "member3", "member4"}, true)
 	assertInt(t, must(redis.Int(c.Do("SREM", "foo", "member1"))), 0)
 	assertInt(t, must(redis.Int(c.Do("SREM", "foo", "member2", "member3"))), 2)
-	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member4"})
+	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member4"}, true)
 	assertInt(t, must(redis.Int(c.Do("SREM", "foo", "member3", "member4"))), 1)
-	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{})
+	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{}, false)
 	assertInt(t, must(redis.Int(c.Do("SREM", "foo", "member3", "member4"))), 0)
+}
+
+func TestZADD(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("ZADD", "foo", 4, "four")
+	c.Do("ZADD", "foo", 3, "three")
+	assertInt(t, must(redis.Int(c.Do("ZADD", "foo", 2, "two", 1, "one", 0, "zero"))), 3)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{"zero", "one", "two", "three", "four"}, false)
+	assertInt(t, must(redis.Int(c.Do("ZADD", "foo", 7, "zero", 1, "one", 5, "five"))), 1)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{"one", "two", "three", "four", "five", "zero"}, false)
 }
 
 // TODO: test_getbit(self):

@@ -3,6 +3,8 @@ package redigomock
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
+	"strings"
 )
 
 // NewFakeRedis returns a connection, that acts as real redis
@@ -13,25 +15,52 @@ func NewFakeRedis() *Conn {
 }
 
 type fakeRedis struct {
-	keys map[string]interface{}
-	sets map[string]map[string]interface{}
+	keys map[string]*container
 }
 
-type fakeStruct struct {
+type container struct {
 	redisStruct interface{}
-}
-
-func getRedisStruct(obj interface{}) (interface{}, error) {
-	s, ok := obj.(*fakeStruct)
-	if !ok {
-		return nil, fmt.Errorf("Wrong type of struct")
-	}
-	return s.redisStruct, nil
+	redisType   int
 }
 
 func newFakeRedis() *fakeRedis {
 	return &fakeRedis{
-		keys: make(map[string]interface{}),
+		keys: make(map[string]*container),
+	}
+}
+
+func toString(value interface{}) string {
+	switch value := value.(type) {
+	case string:
+		return string(value)
+	case []byte:
+		return string(value)
+	case int:
+		return fmt.Sprintf("%d", value)
+	case int64:
+		return fmt.Sprintf("%d", value)
+	case float64:
+		return fmt.Sprintf("%f", value)
+	case bool:
+		if bool(value) {
+			return "1"
+		}
+		return "0"
+	case nil:
+		return ""
+	default:
+		panic(fmt.Sprintf("Unsupported argument type: %s", value))
+	}
+}
+
+func toInt64(value interface{}) int64 {
+	switch value := value.(type) {
+	case int:
+		return int64(value)
+	case int64:
+		return value
+	default:
+		panic(fmt.Sprintf("Unsupported argument type: %s", value))
 	}
 }
 
@@ -39,25 +68,19 @@ func (c *Conn) fake() {
 	fake := newFakeRedis()
 
 	c.Command("SET", NewAnyData(), NewAnyData()).ExpectCallback(func(args []interface{}) (interface{}, error) {
-		key := args[0].(string)
-		fake.keys[key] = args[1]
+		key := toString(args[0])
+		fake.keys[key] = &container{args[1], _redisKey}
 		return "OK", nil
 	})
 
 	c.Command("GET", NewAnyData()).ExpectCallback(func(args []interface{}) (interface{}, error) {
-		key := args[0].(string)
-		if r, exists := fake.keys[key]; exists {
-			if _, ok := r.(*fakeStruct); ok {
-				return nil, fmt.Errorf("Wrong type of struct")
-			}
-			return r, nil
-		}
-		return nil, nil
+		key := toString(args[0])
+		return fake.getRedisStruct(key, _redisKey)
 	})
 
 	c.Command("KEYS", NewAnyData()).ExpectCallback(func(args []interface{}) (interface{}, error) {
 		keys := make([]interface{}, 0, 64)
-		pattern := args[0].(string)
+		pattern := toString(args[0])
 		for key := range fake.keys {
 			matched, err := filepath.Match(pattern, key)
 			if err != nil {
@@ -76,64 +99,118 @@ func (c *Conn) fake() {
 	})
 
 	c.Command("SADD", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
-		key := args[0].(string)
-		setStruct, found := fake.keys[key]
-		if !found {
-			setStruct = &fakeStruct{make(map[string]interface{})}
-			fake.keys[key] = setStruct
-		}
-		set, err := getRedisStruct(setStruct)
+		key := toString(args[0])
+		set, err := fake.getSet(key)
 		if err != nil {
 			return nil, err
 		}
-		_set := set.(map[string]interface{})
+		if set == nil {
+			set = make(map[string]interface{})
+			fake.keys[key] = &container{set, _redisSet}
+		}
 		inserted := 0
 		for _, value := range args[1:] {
-			if _, found := _set[value.(string)]; !found {
+			if _, found := set[toString(value)]; !found {
 				inserted++
 			}
-			_set[value.(string)] = true
+			set[toString(value)] = value
 		}
 		return int64(inserted), nil
 	})
 
 	c.Command("SREM", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
-		key := args[0].(string)
-		setStruct, found := fake.keys[key]
-		if !found {
-			return 0, nil
-		}
-		set, err := getRedisStruct(setStruct)
+		key := toString(args[0])
+		set, err := fake.getSet(key)
 		if err != nil {
 			return nil, err
 		}
-		_set := set.(map[string]interface{})
+		if set == nil {
+			return 0, nil
+		}
 		removed := 0
 		for _, value := range args[1:] {
-			if _, found := _set[value.(string)]; found {
+			if _, found := set[toString(value)]; found {
 				removed++
 			}
-			delete(_set, value.(string))
+			delete(set, toString(value))
 		}
 		return int64(removed), nil
 	})
 
 	c.Command("SMEMBERS", NewAnyData()).ExpectCallback(func(args []interface{}) (interface{}, error) {
-		key := args[0].(string)
-		setStruct, found := fake.keys[key]
-		if !found {
-			return []string{}, nil
-		}
-		set, err := getRedisStruct(setStruct)
+		key := toString(args[0])
+		set, err := fake.getSet(key)
 		if err != nil {
 			return nil, err
 		}
-		_set := set.(map[string]interface{})
-		keys := make([]interface{}, 0, len(_set))
-		for key := range _set {
+		if set == nil {
+			return [][]byte{}, nil
+		}
+		keys := make([]interface{}, 0, len(set))
+		for key := range set {
 			keys = append(keys, []byte(key))
 		}
 		return keys, nil
+	})
+
+	c.Command("ZADD", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		if len(args) < 3 {
+			return nil, fmt.Errorf("Wrong number of arguments passed")
+		}
+		key := toString(args[0])
+		set, err := fake.getSortedSet(key)
+		if err != nil {
+			return nil, err
+		}
+		if set == nil {
+			set = make(map[string]*scoredValue)
+			fake.keys[key] = &container{set, _redisSortedSet}
+		}
+		inserted := 0
+		for i := range args[1:] {
+			if i%2 == 0 && i < len(args)-1 {
+				score := args[1+i]
+				value := args[2+i]
+				if _, found := set[toString(value)]; !found {
+					inserted++
+				}
+				set[toString(value)] = &scoredValue{value, toInt64(score)}
+			}
+		}
+		return int64(inserted), nil
+	})
+
+	c.Command("ZRANGE", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		if len(args) < 3 {
+			return nil, fmt.Errorf("Wrong number of arguments passed")
+		}
+		key := toString(args[0])
+		from := args[1].(int)
+		to := args[2].(int)
+		withScores := strings.ToLower(fmt.Sprintf("%s", args[len(args)-1])) == "withscores"
+		set, err := fake.getSortedSet(key)
+		if err != nil {
+			return nil, err
+		}
+		if set == nil {
+			return []string{}, nil
+		}
+		values := make(scoredValueArray, 0, len(set))
+		for _, value := range set {
+			values = append(values, value)
+		}
+		sort.Sort(values)
+		if to < 0 {
+			to = len(values) + 1 + to
+		}
+		result := make([]interface{}, 0, len(values))
+		for _, v := range values[from:to] {
+			result = append(result, []byte(v.value.(string)))
+			if withScores {
+				result = append(result, []byte(fmt.Sprintf("%d", v.score)))
+			}
+		}
+		return result, nil
 	})
 
 }
