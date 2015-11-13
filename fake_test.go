@@ -111,6 +111,13 @@ func TestSrem(t *testing.T) {
 	assertInt(t, must(redis.Int(c.Do("SREM", "foo", "member3", "member4"))), 0)
 }
 
+func TestSUnion(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("SADD", "foo", "member1", "member2")
+	c.Do("SADD", "bar", "member2", "member3")
+	assertStrings(t, must(redis.Strings(c.Do("SUNION", "foo", "bar"))).([]string), []string{"member1", "member2", "member3"}, true)
+}
+
 func TestZadd(t *testing.T) {
 	c := NewFakeRedis()
 	c.Do("ZADD", "foo", 4, "four")
@@ -270,7 +277,6 @@ func TestZCountExclusive(t *testing.T) {
 // TODO: test_smove_non_existent_key(self):
 // TODO: test_spop(self):
 // TODO: test_srandmember(self):
-// TODO: test_sunion(self):
 // TODO: test_sunionstore(self):
 // TODO: test_zadd(self):
 // TODO: test_zadd_uses_str(self):

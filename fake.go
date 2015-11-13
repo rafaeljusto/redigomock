@@ -196,6 +196,28 @@ func (c *Conn) fake() {
 		return keys, nil
 	})
 
+	c.Command("SUNION", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		keys := make(map[string]bool)
+		for _, arg := range args {
+			key := toString(arg)
+			set, err := fake.getSet(key)
+			if err != nil {
+				return nil, err
+			}
+			if set == nil {
+				return [][]byte{}, nil
+			}
+			for key := range set {
+				keys[key] = true
+			}
+		}
+		a := make([]interface{}, 0, len(keys))
+		for key := range keys {
+			a = append(a, []byte(key))
+		}
+		return a, nil
+	})
+
 	c.Command("ZADD", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
 		if len(args) < 3 {
 			return nil, fmt.Errorf("Wrong number of arguments passed")
