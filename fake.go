@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -27,6 +28,48 @@ func newFakeRedis() *fakeRedis {
 	return &fakeRedis{
 		keys: make(map[string]*container),
 	}
+}
+
+type operator func(int64, int64) bool
+
+func gt(score, from int64) bool {
+	return from < score
+}
+
+func gte(score, from int64) bool {
+	return from <= score
+}
+
+func lt(score, to int64) bool {
+	return score < to
+}
+
+func lte(score, to int64) bool {
+	return score <= to
+}
+
+func inf(score, limit int64) bool {
+	return true
+}
+
+func extractOperator(limit string, defaultOperator operator, nonEqualOperator operator) (operator, int64, error) {
+	o := defaultOperator
+	if limit[0] == '(' {
+		o = nonEqualOperator
+		score, err := strconv.ParseInt(limit[1:], 10, 64)
+		if err != nil {
+			return nil, 0, err
+		}
+		return o, score, nil
+	}
+	if strings.HasSuffix(limit, "inf") {
+		return inf, 0, nil
+	}
+	score, err := strconv.ParseInt(limit, 10, 64)
+	if err != nil {
+		return nil, 0, err
+	}
+	return o, score, nil
 }
 
 func toString(value interface{}) string {
@@ -67,7 +110,7 @@ func toInt64(value interface{}) int64 {
 func (c *Conn) fake() {
 	fake := newFakeRedis()
 
-	c.Command("SET", NewAnyData(), NewAnyData()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+	c.Command("SET", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
 		key := toString(args[0])
 		fake.keys[key] = &container{args[1], _redisKey}
 		return "OK", nil
@@ -211,6 +254,42 @@ func (c *Conn) fake() {
 			}
 		}
 		return result, nil
+	})
+
+	c.Command("ZCOUNT", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		if len(args) < 3 {
+			return nil, fmt.Errorf("Wrong number of arguments passed")
+		}
+		key := toString(args[0])
+		fromArg := toString(args[1])
+		toArg := toString(args[2])
+		set, err := fake.getSortedSet(key)
+		if err != nil {
+			return nil, err
+		}
+		if set == nil {
+			return []string{}, nil
+		}
+		values := make(scoredValueArray, 0, len(set))
+		for _, value := range set {
+			values = append(values, value)
+		}
+		sort.Sort(values)
+		fromOperator, from, err := extractOperator(fromArg, gte, gt)
+		if err != nil {
+			return 0, err
+		}
+		toOperator, to, err := extractOperator(toArg, lte, lt)
+		if err != nil {
+			return 0, err
+		}
+		count := int64(0)
+		for _, v := range values {
+			if fromOperator(v.score, from) && toOperator(v.score, to) {
+				count++
+			}
+		}
+		return count, nil
 	})
 
 }

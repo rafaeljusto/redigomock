@@ -86,7 +86,7 @@ func TestGetInvalidType(t *testing.T) {
 	assertError(t, getError(c.Do("GET", "foo")))
 }
 
-func TestSADD(t *testing.T) {
+func TestSadd(t *testing.T) {
 	c := NewFakeRedis()
 	assertInt(t, must(redis.Int(c.Do("SADD", "foo", "member1"))), 1)
 	assertInt(t, must(redis.Int(c.Do("SADD", "foo", "member1"))), 0)
@@ -97,7 +97,7 @@ func TestSADD(t *testing.T) {
 	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1", "member2", "member3", "member4"}, true)
 }
 
-func TestSREM(t *testing.T) {
+func TestSrem(t *testing.T) {
 	c := NewFakeRedis()
 	c.Do("SADD", "foo", "member1", "member2", "member3", "member4")
 	assertStrings(t, must(redis.Strings(c.Do("SMEMBERS", "foo"))).([]string), []string{"member1", "member2", "member3", "member4"}, true)
@@ -111,7 +111,7 @@ func TestSREM(t *testing.T) {
 	assertInt(t, must(redis.Int(c.Do("SREM", "foo", "member3", "member4"))), 0)
 }
 
-func TestZADD(t *testing.T) {
+func TestZadd(t *testing.T) {
 	c := NewFakeRedis()
 	c.Do("ZADD", "foo", 4, "four")
 	c.Do("ZADD", "foo", 3, "three")
@@ -119,6 +119,33 @@ func TestZADD(t *testing.T) {
 	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{"zero", "one", "two", "three", "four"}, false)
 	assertInt(t, must(redis.Int(c.Do("ZADD", "foo", 7, "zero", 1, "one", 5, "five"))), 1)
 	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{"one", "two", "three", "four", "five", "zero"}, false)
+}
+
+func TestZcount(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("ZADD", "foo", 1, "one")
+	c.Do("ZADD", "foo", 2, "three")
+	c.Do("ZADD", "foo", 5, "five")
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", 2, 4))), 1)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", 1, 4))), 2)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", 0, 5))), 3)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", 4, "+inf"))), 1)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "-inf", 4))), 2)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "-inf", "+inf"))), 3)
+}
+
+func TestZCountExclusive(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("ZADD", "foo", 1, "one")
+	c.Do("ZADD", "foo", 2, "three")
+	c.Do("ZADD", "foo", 5, "five")
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "-inf", "(2"))), 1)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "-inf", 2))), 2)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "(5", "+inf"))), 0)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "(1", 5))), 2)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "(2", "(5"))), 0)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "(1", "(5"))), 1)
+	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", 2, "(5"))), 1)
 }
 
 // TODO: test_getbit(self):
@@ -252,8 +279,6 @@ func TestZADD(t *testing.T) {
 // TODO: test_zrange_same_score(self):
 // TODO: test_zcard(self):
 // TODO: test_zcard_non_existent_key(self):
-// TODO: test_zcount(self):
-// TODO: test_zcount_exclusive(self):
 // TODO: test_zincrby(self):
 // TODO: test_zrange_descending(self):
 // TODO: test_zrange_descending_with_scores(self):
