@@ -44,12 +44,12 @@ func assertStrings(t *testing.T, result []string, expected []string, sorting boo
 		sort.Strings(e)
 	}
 	if len(expected) != len(result) {
-		t.Errorf("Excpected '%s', got '%s'", expected, result)
+		t.Errorf("Expected '%s', got '%s'", expected, result)
 		return
 	}
 	for i := range e {
 		if e[i] != r[i] {
-			t.Errorf("Excpected '%s', got '%s'", expected, result)
+			t.Errorf("Expected '%s', got '%s'", expected, result)
 			return
 		}
 	}
@@ -79,7 +79,7 @@ func TestMulti(t *testing.T) {
 	c.Send("SADD", "foo", "member2")
 	c.Send("SMEMBERS", "foo")
 	res, err := c.Do("EXEC")
-	assertStrings(t, must(redis.Strings(res.([]interface{})[3], err)).([]string), []string{"member1", "member2"}, true)
+	assertStrings(t, must(redis.Strings(res.([]interface{})[2], err)).([]string), []string{"member1", "member2"}, true)
 }
 
 func TestGetThatNotExists(t *testing.T) {
@@ -164,6 +164,68 @@ func TestZCountExclusive(t *testing.T) {
 	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", "(1", "(5"))), 1)
 	assertInt(t, must(redis.Int(c.Do("ZCOUNT", "foo", 2, "(5"))), 1)
 }
+
+func TestZRangeSameScore(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("ZADD", "foo", 2, "two_a")
+	c.Do("ZADD", "foo", 2, "two_b")
+	c.Do("ZADD", "foo", 2, "two_c")
+	c.Do("ZADD", "foo", 2, "two_d")
+	c.Do("ZADD", "foo", 2, "two_e")
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 2, 3))).([]string), []string{"two_c", "two_d"}, false)
+}
+
+func TestZRangeByScore(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("ZADD", "foo", 0, "zero")
+	c.Do("ZADD", "foo", 2, "two")
+	c.Do("ZADD", "foo", 2, "two_a_also")
+	c.Do("ZADD", "foo", 2, "two_b_also")
+	c.Do("ZADD", "foo", 4, "four")
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", 1, 3))).([]string), []string{"two", "two_a_also", "two_b_also"}, false)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", 2, 3))).([]string), []string{"two", "two_a_also", "two_b_also"}, false)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", 0, 4))).([]string), []string{"zero", "two", "two_a_also", "two_b_also", "four"}, false)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", "-inf", 1))).([]string), []string{"zero"}, false)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", 2, "+inf"))).([]string), []string{"two", "two_a_also", "two_b_also", "four"}, false)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", "-inf", "+inf"))).([]string), []string{"zero", "two", "two_a_also", "two_b_also", "four"}, false)
+}
+
+func TestZRangeByScoreExclusive(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("ZADD", "foo", 0, "zero")
+	c.Do("ZADD", "foo", 2, "two")
+	c.Do("ZADD", "foo", 4, "four")
+	c.Do("ZADD", "foo", 5, "five")
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", "(0", 6))).([]string), []string{"two", "four", "five"}, false)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", "(2", "(5"))).([]string), []string{"four"}, false)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", 0, "(4"))).([]string), []string{"zero", "two"}, false)
+}
+
+func TestZRangeByScoreWithScores(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("ZADD", "foo", 1, "one")
+	c.Do("ZADD", "foo", 2, "two")
+	c.Do("ZADD", "foo", 3, "three")
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGEBYSCORE", "foo", 1, 3, "WITHSCORES"))).([]string), []string{"one", "1", "two", "2", "three", "1"}, false)
+}
+
+// TODO: test_zrangebyscore_raises_error(self):
+
+func TestZRemRangeByScore(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("ZADD", "foo", 0, "zero")
+	c.Do("ZADD", "foo", 2, "two")
+	c.Do("ZADD", "foo", 4, "four")
+	assertInt(t, must(redis.Int(c.Do("ZREMRANGEBYSCORE", "foo", 5, 10))), 0)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{"zero", "two", "four"}, false)
+	assertInt(t, must(redis.Int(c.Do("ZREMRANGEBYSCORE", "foo", 1, 3))), 1)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{"zero", "four"}, false)
+	assertInt(t, must(redis.Int(c.Do("ZREMRANGEBYSCORE", "foo", 0, 4))), 2)
+	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{}, false)
+}
+
+// TODO: test_zremrangebyscore(self):
+// TODO: test_zremrangebyscore_exclusive(self):
 
 // TODO: test_getbit(self):
 // TODO: test_multiple_bits_set(self):
@@ -292,7 +354,6 @@ func TestZCountExclusive(t *testing.T) {
 // TODO: test_zadd_uses_str(self):
 // TODO: test_zadd_errors(self):
 // TODO: test_zadd_multiple(self):
-// TODO: test_zrange_same_score(self):
 // TODO: test_zcard(self):
 // TODO: test_zcard_non_existent_key(self):
 // TODO: test_zincrby(self):
@@ -310,19 +371,12 @@ func TestZCountExclusive(t *testing.T) {
 // TODO: test_zrevrank_non_existent_member(self):
 // TODO: test_zrevrange(self):
 // TODO: test_zrevrange_sorted_keys(self):
-// TODO: test_zrangebyscore(self):
-// TODO: test_zrangebysore_exclusive(self):
-// TODO: test_zrangebyscore_raises_error(self):
-// TODO: test_zrangebyscore_slice(self):
-// TODO: test_zrangebyscore_withscores(self):
 // TODO: test_zrevrangebyscore(self):
 // TODO: test_zrevrangebyscore_exclusive(self):
 // TODO: test_zrevrangebyscore_raises_error(self):
 // TODO: test_zremrangebyrank(self):
 // TODO: test_zremrangebyrank_negative_indices(self):
 // TODO: test_zremrangebyrank_out_of_bounds(self):
-// TODO: test_zremrangebyscore(self):
-// TODO: test_zremrangebyscore_exclusive(self):
 // TODO: test_zremrangebyscore_raises_error(self):
 // TODO: test_zremrangebyscore_badkey(self):
 // TODO: test_zunionstore(self):

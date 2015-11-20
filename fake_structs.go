@@ -1,6 +1,9 @@
 package redigomock
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 const (
 	_redisKey       = 0
@@ -59,4 +62,39 @@ func (f *fakeRedis) getSortedSet(key string) (map[string]*scoredValue, error) {
 	}
 	result := _struct.(map[string]*scoredValue)
 	return result, nil
+}
+
+func (f *fakeRedis) sortedSetEnum(args []interface{}, callback func(set map[string]*scoredValue, value *scoredValue)) error {
+	if len(args) < 3 {
+		return fmt.Errorf("Wrong number of arguments passed")
+	}
+	key := toString(args[0])
+	fromArg := toString(args[1])
+	toArg := toString(args[2])
+	set, err := f.getSortedSet(key)
+	if err != nil {
+		return err
+	}
+	if set == nil {
+		return nil
+	}
+	values := make(scoredValueArray, 0, len(set))
+	for _, value := range set {
+		values = append(values, value)
+	}
+	sort.Sort(values)
+	fromOperator, from, err := extractOperator(fromArg, gte, gt)
+	if err != nil {
+		return err
+	}
+	toOperator, to, err := extractOperator(toArg, lte, lt)
+	if err != nil {
+		return err
+	}
+	for _, v := range values {
+		if fromOperator(v.score, from) && toOperator(v.score, to) {
+			callback(set, v)
+		}
+	}
+	return nil
 }

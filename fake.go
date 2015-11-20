@@ -110,8 +110,7 @@ func toInt64(value interface{}) int64 {
 func (c *Conn) fake() {
 	fake := newFakeRedis()
 
-
-	c.Command("MULTI").Expect("OK")
+	c.Command("MULTI")
 
 	c.Command("EXEC").ExpectCallback(func(args []interface{}) (interface{}, error) {
 		result := make([]interface{}, len(c.pendingResults))
@@ -276,11 +275,15 @@ func (c *Conn) fake() {
 		}
 		sort.Sort(values)
 		if to < 0 {
-			to = len(values) + 1 + to
+			to = len(values) + to
 		}
+		if to > len(values)-1 {
+			to = len(values) - 1
+		}
+
 		result := make([]interface{}, 0, len(values))
-		for _, v := range values[from:to] {
-			result = append(result, []byte(v.value.(string)))
+		for _, v := range values[from : to+1] {
+			result = append(result, []byte(toString(v.value)))
 			if withScores {
 				result = append(result, []byte(fmt.Sprintf("%d", v.score)))
 			}
@@ -289,39 +292,40 @@ func (c *Conn) fake() {
 	})
 
 	c.Command("ZCOUNT", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
-		if len(args) < 3 {
-			return nil, fmt.Errorf("Wrong number of arguments passed")
-		}
-		key := toString(args[0])
-		fromArg := toString(args[1])
-		toArg := toString(args[2])
-		set, err := fake.getSortedSet(key)
-		if err != nil {
-			return nil, err
-		}
-		if set == nil {
-			return []string{}, nil
-		}
-		values := make(scoredValueArray, 0, len(set))
-		for _, value := range set {
-			values = append(values, value)
-		}
-		sort.Sort(values)
-		fromOperator, from, err := extractOperator(fromArg, gte, gt)
-		if err != nil {
-			return 0, err
-		}
-		toOperator, to, err := extractOperator(toArg, lte, lt)
-		if err != nil {
-			return 0, err
-		}
 		count := int64(0)
-		for _, v := range values {
-			if fromOperator(v.score, from) && toOperator(v.score, to) {
-				count++
-			}
+		if err := fake.sortedSetEnum(args, func(set map[string]*scoredValue, v *scoredValue) {
+			count++
+		}); err != nil {
+			return 0, err
 		}
 		return count, nil
 	})
 
+	c.Command("ZREMRANGEBYSCORE", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		count := int64(0)
+		if err := fake.sortedSetEnum(args, func(set map[string]*scoredValue, v *scoredValue) {
+			count++
+			delete(set, toString(v.value))
+		}); err != nil {
+			return 0, err
+		}
+		return count, nil
+	})
+
+	c.Command("ZRANGEBYSCORE", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		var result []interface{}
+		withScores := strings.ToLower(fmt.Sprintf("%s", args[len(args)-1])) == "withscores"
+
+		result = make([]interface{}, 0)
+		if err := fake.sortedSetEnum(args, func(set map[string]*scoredValue, v *scoredValue) {
+			result = append(result, []byte(toString(v.value)))
+			if withScores {
+				result = append(result, []byte(fmt.Sprintf("%d", v.score)))
+			}
+		}); err != nil {
+			return result, err
+		}
+
+		return result, nil
+	})
 }
