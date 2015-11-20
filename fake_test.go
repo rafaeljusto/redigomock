@@ -72,6 +72,16 @@ func TestSetThenGet(t *testing.T) {
 	}
 }
 
+func TestMulti(t *testing.T) {
+	c := NewFakeRedis()
+	c.Send("MULTI")
+	c.Send("SADD", "foo", "member1")
+	c.Send("SADD", "foo", "member2")
+	c.Send("SMEMBERS", "foo")
+	res, err := c.Do("EXEC")
+	assertStrings(t, must(redis.Strings(res.([]interface{})[3], err)).([]string), []string{"member1", "member2"}, true)
+}
+
 func TestGetThatNotExists(t *testing.T) {
 	c := NewFakeRedis()
 	r := must(c.Do("GET", "foo"))

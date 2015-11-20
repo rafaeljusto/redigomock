@@ -110,6 +110,16 @@ func toInt64(value interface{}) int64 {
 func (c *Conn) fake() {
 	fake := newFakeRedis()
 
+
+	c.Command("MULTI").Expect("OK")
+
+	c.Command("EXEC").ExpectCallback(func(args []interface{}) (interface{}, error) {
+		result := make([]interface{}, len(c.pendingResults))
+		copy(result, c.pendingResults)
+		c.pendingResults = make([]interface{}, 0)
+		return result, nil
+	})
+
 	c.Command("SET", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
 		key := toString(args[0])
 		fake.keys[key] = &container{args[1], _redisKey}
