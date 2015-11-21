@@ -125,6 +125,9 @@ func TestSUnion(t *testing.T) {
 	c := NewFakeRedis()
 	c.Do("SADD", "foo", "member1", "member2")
 	c.Do("SADD", "bar", "member2", "member3")
+	assertStrings(t, must(redis.Strings(c.Do("SUNION", "empty"))).([]string), []string{}, true)
+	assertStrings(t, must(redis.Strings(c.Do("SUNION", "foo"))).([]string), []string{"member1", "member2"}, true)
+	assertStrings(t, must(redis.Strings(c.Do("SUNION", "foo", "empty"))).([]string), []string{"member1", "member2"}, true)
 	assertStrings(t, must(redis.Strings(c.Do("SUNION", "foo", "bar"))).([]string), []string{"member1", "member2", "member3"}, true)
 }
 

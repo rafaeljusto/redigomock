@@ -214,7 +214,7 @@ func (c *Conn) fake() {
 				return nil, err
 			}
 			if set == nil {
-				return [][]byte{}, nil
+				continue
 			}
 			for key := range set {
 				keys[key] = true
