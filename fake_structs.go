@@ -23,6 +23,9 @@ func (values scoredValueArray) Len() int {
 }
 
 func (values scoredValueArray) Less(i, j int) bool {
+	if values[i].score == values[j].score {
+		return toString(values[i].value) < toString(values[j].value)
+	}
 	return values[i].score < values[j].score
 }
 
