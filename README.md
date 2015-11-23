@@ -93,3 +93,45 @@ func main() {
 	fmt.Println("Success!")
 }
 ```
+
+fakeredis
+---------
+
+Inspired by [python fakeredis](https://github.com/jamesls/fakeredis), this library can mock redis connection to act as real redis.
+This work is at the beginning and only the following commands are supported:
+- GET
+- SET
+- MULTI, EXEC
+- KEYS
+- FLUSHDB
+- SADD
+- SMEMBERS
+- SREM
+- SUNION
+- ZADD
+- ZRANGE
+- ZCOUNT
+- ZREMRANGEBYSCORE
+- ZRANGEBYSCORE 
+
+Note: commands implementations are not optimized for performance.
+
+Fakeredis example
+
+```go
+	import (
+		"github.com/rafaeljusto/redigomock"
+		"github.com/garyburd/redigo/redis"
+	)
+
+	// Fake connection is thread-safe
+	c := redigomock.NewFakeRedis()
+	pool := &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return c, nil
+		},
+	}
+```
+
