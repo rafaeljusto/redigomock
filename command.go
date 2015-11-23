@@ -7,7 +7,10 @@ package redigomock
 import (
 	"fmt"
 	"reflect"
+	"sync"
 )
+
+var callbackMutex sync.Mutex
 
 // Response struct that represents single response from `Do` call
 type Response struct {
@@ -71,6 +74,13 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 
 	}
 	return true
+}
+
+func (c *Cmd) invokeCallback(args []interface{}) (interface{}, error){
+	defer callbackMutex.Unlock()
+	
+	callbackMutex.Lock()
+	return c.Callback(args)
 }
 
 // Expect sets a response for this command. Everytime a Do or Receive methods

@@ -169,7 +169,7 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	c.stats[cmd.hash()]++
 
 	if cmd.Callback != nil {
-		return cmd.Callback(args)
+		return cmd.invokeCallback(args)
 	}
 
 	if len(cmd.Responses) == 0 {
@@ -223,7 +223,7 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 	c.stats[cmd.hash()]++
 
 	if cmd.Callback != nil {
-		return cmd.Callback(args)
+		return cmd.invokeCallback(args)
 	}
 
 	if len(cmd.Responses) == 0 {
