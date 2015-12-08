@@ -120,7 +120,7 @@ Fakeredis example
 
 ```go
 	import (
-		"github.com/rafaeljusto/redigomock"
+		"github.com/gmlexx/redigomock"
 		"github.com/garyburd/redigo/redis"
 	)
 
