@@ -273,6 +273,9 @@ func (c *Conn) fake() {
 		for _, value := range set {
 			values = append(values, value)
 		}
+		if len(values) == 0{
+			return make([]interface{}, 0, 0), nil
+		}
 		sort.Sort(values)
 		if to < 0 {
 			to = len(values) + to
@@ -280,7 +283,12 @@ func (c *Conn) fake() {
 		if to > len(values)-1 {
 			to = len(values) - 1
 		}
-
+		if from < 0 {
+			from = len(values) + from
+		}
+		if from > len(values)-1 {
+			from = len(values) - 1
+		}
 		result := make([]interface{}, 0, len(values))
 		for _, v := range values[from : to+1] {
 			result = append(result, []byte(toString(v.value)))
