@@ -267,7 +267,7 @@ func (c *Conn) fake() {
 			return nil, err
 		}
 		if set == nil {
-			return []string{}, nil
+			return make([]interface{}, 0, 0), nil
 		}
 		values := make(scoredValueArray, 0, len(set))
 		for _, value := range set {
