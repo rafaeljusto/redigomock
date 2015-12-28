@@ -3,7 +3,9 @@ package redigomock
 import (
 	"sort"
 	"testing"
-
+	"fmt"
+	"sync"
+	
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -32,6 +34,13 @@ func assertError(t *testing.T, err error) {
 	if err == nil {
 		t.Error("Error expected")
 	}
+}
+
+func counter(count int, ch chan int){
+	for i := 0; i < count; i++ {
+		ch <- i
+	}
+	close(ch)
 }
 
 func assertStrings(t *testing.T, result []string, expected []string, sorting bool) {
@@ -225,6 +234,42 @@ func TestZRemRangeByScore(t *testing.T) {
 	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{"zero", "four"}, false)
 	assertInt(t, must(redis.Int(c.Do("ZREMRANGEBYSCORE", "foo", 0, 4))), 2)
 	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{}, false)
+}
+
+func TestMultiThread(t *testing.T){
+	var wg sync.WaitGroup
+	c := NewFakeRedis()
+    out := make(chan int);
+    indices := make(chan int);
+	wg.Add(3)
+	go counter(1000, out)
+	go func(){
+		defer wg.Done()
+		for i:= range out{
+			indices <- i
+		}
+		close(indices)
+	}()
+	
+	go func(){
+		defer wg.Done()
+		for i := range indices{
+			c.Do("ZADD", "foo", i, fmt.Sprintf("element_%d", i))
+		}
+	}()
+	
+	go func(){
+		defer wg.Done()
+		for i := range indices{
+			c.Do("ZADD", "foo", i, fmt.Sprintf("element_%d", i))
+		}
+	}()
+	wg.Wait()
+	result, err := redis.Strings(c.Do("ZRANGE", "foo", 0, -1))
+	if err != nil {
+		t.Errorf("ZRANGE fail", err)
+	}
+	assertInt(t, len(result), 1000)
 }
 
 // TODO: test_zremrangebyscore(self):

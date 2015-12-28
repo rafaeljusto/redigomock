@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-var statMutex = &sync.Mutex{}
+var statMutex sync.Mutex
 
 type queueElement struct {
 	commandName string
