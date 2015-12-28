@@ -225,7 +225,9 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		}
 	}
 
+	statMutex.Lock()
 	c.stats[cmd.hash()]++
+	statMutex.Unlock()
 
 	if cmd.Callback != nil {
 		return cmd.invokeCallback(args)
