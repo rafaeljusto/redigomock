@@ -8,7 +8,10 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"sync"
 )
+
+var statMutex = &sync.Mutex{}
 
 type queueElement struct {
 	commandName string
@@ -166,7 +169,9 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 		}
 	}
 
+	statMutex.Lock()
 	c.stats[cmd.hash()]++
+	statMutex.Unlock()
 
 	if cmd.Callback != nil {
 		return cmd.invokeCallback(args)
