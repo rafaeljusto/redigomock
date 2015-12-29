@@ -1,22 +1,23 @@
 redigomock
 ==========
 
-[![Build Status](https://travis-ci.org/rafaeljusto/redigomock.png?branch=master)](https://travis-ci.org/rafaeljusto/redigomock)
-[![GoDoc](https://godoc.org/github.com/rafaeljusto/redigomock?status.png)](https://godoc.org/github.com/rafaeljusto/redigomock)
+[![Build Status](https://travis-ci.org/gmlexx/redigomock.svg)](https://travis-ci.org/gmlexx/redigomock)
 
-Easy way to unit test projects using [redigo library](https://github.com/garyburd/redigo) (Redis client in go). You can find the latest release [here](https://github.com/rafaeljusto/redigomock/releases).
+[![GoDoc](https://godoc.org/github.com/gmlexx/redigomock?status.png)](https://godoc.org/github.com/gmlexx/redigomock)
+
+Easy way to unit test projects using [redigo library](https://github.com/garyburd/redigo) (Redis client in go).
 
 install
 -------
 
 ```
-go get -u github.com/rafaeljusto/redigomock
+go get -u github.com/gmlexx/redigomock
 ```
 
 usage
 -----
 
-Here is an example of using redigomock, for more information please check the [API documentation](https://godoc.org/github.com/rafaeljusto/redigomock).
+Here is an example of using redigomock, for more information please check the [API documentation](https://godoc.org/github.com/gmlexx/redigomock).
 
 ```go
 package main
@@ -24,7 +25,7 @@ package main
 import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"github.com/rafaeljusto/redigomock"
+	"github.com/gmlexx/redigomock"
 )
 
 type Person struct {
