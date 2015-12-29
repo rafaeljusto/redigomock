@@ -121,7 +121,7 @@ func (c *Conn) fake() {
 
 	c.Command("SET", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
 		key := toString(args[0])
-		fake.keys[key] = &container{args[1], _redisKey}
+		fake.keys[key] = &container{[]byte(toString(args[1])), _redisKey}
 		return "OK", nil
 	})
 
