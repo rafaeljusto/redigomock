@@ -7,7 +7,10 @@ package redigomock
 import (
 	"fmt"
 	"reflect"
+	"sync"
 )
+
+var callbackMutex sync.Mutex
 
 // Response struct that represents single response from `Do` call
 type Response struct {
@@ -18,17 +21,22 @@ type Response struct {
 // Cmd stores the registered information about a command to return it later
 // when request by a command execution
 type Cmd struct {
-	Name      string        // Name of the command
-	Args      []interface{} // Arguments of the command
-	Responses []Response    // Slice of returned responses
+	Name             string        // Name of the command
+	Args             []interface{} // Arguments of the command
+	Responses        []Response    // Slice of returned responses
+	Callback         callback      // Callback will always be called, Responses ignored
+	ignoreArgsLength bool
 }
 
 // cmdHash stores a unique identifier of the command
 type cmdHash string
 
+// callback as response
+type callback func(args []interface{}) (interface{}, error)
+
 // equal verify if a command/argumets is related to a registered command
 func equal(commandName string, args []interface{}, cmd *Cmd) bool {
-	if commandName != cmd.Name || len(args) != len(cmd.Args) {
+	if commandName != cmd.Name || (!cmd.ignoreArgsLength && len(args) != len(cmd.Args)) {
 		return false
 	}
 
@@ -51,7 +59,7 @@ func equal(commandName string, args []interface{}, cmd *Cmd) bool {
 // match check if provided arguments can be matched with any registered
 // commands
 func match(commandName string, args []interface{}, cmd *Cmd) bool {
-	if commandName != cmd.Name || len(args) != len(cmd.Args) {
+	if commandName != cmd.Name || (!cmd.ignoreArgsLength && len(args) != len(cmd.Args)) {
 		return false
 	}
 
@@ -68,6 +76,13 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 	return true
 }
 
+func (c *Cmd) invokeCallback(args []interface{}) (interface{}, error){
+	defer callbackMutex.Unlock()
+	
+	callbackMutex.Lock()
+	return c.Callback(args)
+}
+
 // Expect sets a response for this command. Everytime a Do or Receive methods
 // are executed for a registered command this response or error will be
 // returned. Expect call returns a pointer to Cmd struct, so you can chain
@@ -75,6 +90,12 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 // matching this commands arguments in FIFO order
 func (c *Cmd) Expect(response interface{}) *Cmd {
 	c.Responses = append(c.Responses, Response{response, nil})
+	return c
+}
+
+// ExpectCallback register callback function to return response result
+func (c *Cmd) ExpectCallback(cb callback) *Cmd {
+	c.Callback = cb
 	return c
 }
 

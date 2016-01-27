@@ -32,7 +32,14 @@ func NewAnyData() FuzzyMatcher {
 	return anyData{}
 }
 
-type anyInt struct{}
+// NewAnyDataArray returns a FuzzyMatcher instance matching every data passed as
+// an arguments (returns true by default) and ignore arguments length
+func NewAnyDataArray() FuzzyMatcher {
+	return anyData{true}
+}
+
+type anyInt struct {
+}
 
 func (matcher anyInt) Match(input interface{}) bool {
 	switch input.(type) {
@@ -43,7 +50,8 @@ func (matcher anyInt) Match(input interface{}) bool {
 	}
 }
 
-type anyDouble struct{}
+type anyDouble struct {
+}
 
 func (matcher anyDouble) Match(input interface{}) bool {
 	switch input.(type) {
@@ -54,7 +62,9 @@ func (matcher anyDouble) Match(input interface{}) bool {
 	}
 }
 
-type anyData struct{}
+type anyData struct {
+	ignoreArgsLength bool
+}
 
 func (matcher anyData) Match(input interface{}) bool {
 	return true

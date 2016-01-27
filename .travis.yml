@@ -8,10 +8,3 @@ install:
 
 script:
   - go test
-
-notifications:
-  email:
-    recipients:
-      - adm@rafael.net.br
-    on_success: change
-    on_failure: always

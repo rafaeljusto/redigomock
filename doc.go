@@ -198,4 +198,19 @@
 // match AnyInt struct created by NewAnyInt() method. AnyInt struct will match
 // any integer passed to redigomock from the tested method. Please see
 // fuzzyMatch.go file for more details.
+//
+// Using fake redis:
+//
+// conn := redigomock.NewFakeRedis()
+// pool: &redis.Pool{
+// 	 MaxIdle:     3,
+// 	 IdleTimeout: 240 * time.Second,
+// 	 Dial: func() (redis.Conn, error) {
+//     return conn, nil
+//   },
+// }
+//
+// This pool will returns the same connection, that acts as in-memory redis database implementation.
+
+
 package redigomock

@@ -8,7 +8,10 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"sync"
 )
+
+var statMutex sync.Mutex
 
 type queueElement struct {
 	commandName string
@@ -18,22 +21,24 @@ type queueElement struct {
 // Conn is the struct that can be used where you inject the redigo.Conn on
 // your project
 type Conn struct {
-	ReceiveWait bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
-	ReceiveNow  chan bool       // Used to lock Receive method to simulate a PubSub scenario
-	CloseMock   func() error    // Mock the redigo Close method
-	ErrMock     func() error    // Mock the redigo Err method
-	FlushMock   func() error    // Mock the redigo Flush method
-	commands    []*Cmd          // Slice that stores all registered commands for each connection
-	queue       []queueElement  // Slice that stores all queued commands for each connection
-	stats       map[cmdHash]int // Command calls counter
+	ReceiveWait    bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
+	ReceiveNow     chan bool       // Used to lock Receive method to simulate a PubSub scenario
+	CloseMock      func() error    // Mock the redigo Close method
+	ErrMock        func() error    // Mock the redigo Err method
+	FlushMock      func() error    // Mock the redigo Flush method
+	commands       []*Cmd          // Slice that stores all registered commands for each connection
+	queue          []queueElement  // Slice that stores all queued commands for each connection
+	stats          map[cmdHash]int // Command calls counter
+	pendingResults []interface{}
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
 // don't need any Redis connection parameter
 func NewConn() *Conn {
 	return &Conn{
-		ReceiveNow: make(chan bool),
-		stats:      make(map[cmdHash]int),
+		ReceiveNow:     make(chan bool),
+		stats:          make(map[cmdHash]int),
+		pendingResults: make([]interface{}, 0),
 	}
 }
 
@@ -62,6 +67,11 @@ func (c *Conn) Command(commandName string, args ...interface{}) *Cmd {
 	cmd := &Cmd{
 		Name: commandName,
 		Args: args,
+	}
+	for _, a := range args {
+		if any, ok := a.(anyData); ok {
+			cmd.ignoreArgsLength = any.ignoreArgsLength
+		}
 	}
 	c.removeRelatedCommands(commandName, args)
 	c.commands = append(c.commands, cmd)
@@ -139,9 +149,15 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	queueLength := len(c.queue)
 	if queueLength > 0 {
 		// Process the queued commands first
-		cmd := c.queue[0]
-		c.queue = c.queue[1:]
+		cmd := c.queue[queueLength-1]
+		c.queue = c.queue[:queueLength-1]
 		reply, err = c.Do(cmd.commandName, cmd.args...)
+		if err != nil {
+			return nil, err
+		}
+		if reply != nil {
+			c.pendingResults = append(c.pendingResults, reply)
+		}
 	}
 
 	cmd := c.find(commandName, args)
@@ -153,16 +169,20 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 		}
 	}
 
+	statMutex.Lock()
 	c.stats[cmd.hash()]++
+	statMutex.Unlock()
+
+	if cmd.Callback != nil {
+		return cmd.invokeCallback(args)
+	}
 
 	if len(cmd.Responses) == 0 {
 		return nil, nil
 	}
-
 	response := cmd.Responses[0]
 	cmd.Responses = cmd.Responses[1:]
 	return response.Response, response.Error
-
 }
 
 // Send stores the command and arguments to be executed later (by the Receive
@@ -205,14 +225,19 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		}
 	}
 
+	statMutex.Lock()
 	c.stats[cmd.hash()]++
+	statMutex.Unlock()
+
+	if cmd.Callback != nil {
+		return cmd.invokeCallback(args)
+	}
 
 	if len(cmd.Responses) == 0 {
 		reply, err = nil, nil
 	} else {
 		response := cmd.Responses[0]
 		cmd.Responses = cmd.Responses[1:]
-
 		reply, err = response.Response, response.Error
 	}
 

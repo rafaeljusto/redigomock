@@ -194,6 +194,26 @@ func TestDoCommandWithoutResponse(t *testing.T) {
 	}
 }
 
+func TestDoCommandWithCallback(t *testing.T) {
+	connection := NewConn()
+
+	connection.Command("CALLBACK", NewAnyInt(), NewAnyInt()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		sum := 0
+		for _, value := range args {
+			sum += value.(int)
+		}
+		return sum, nil
+	})
+
+	result, err := connection.Do("CALLBACK", 1, 2)
+	if err != nil {
+		t.Errorf("Wrong result. Expected '3' and got error '%s'", err)
+	}
+	if result != 3 {
+		t.Errorf("Wrong result. Expected '3' and got '%s'", result)
+	}
+}
+
 func TestSendFlushReceive(t *testing.T) {
 	connection := NewConn()
 
