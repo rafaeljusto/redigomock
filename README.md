@@ -113,7 +113,11 @@ This work is at the beginning and only the following commands are supported:
 - ZRANGE
 - ZCOUNT
 - ZREMRANGEBYSCORE
-- ZRANGEBYSCORE 
+- ZRANGEBYSCORE
+- HGET
+- HSET
+- HLEN
+- HGETALL
 
 Note: commands implementations are not optimized for performance.
 

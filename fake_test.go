@@ -236,6 +236,40 @@ func TestZRemRangeByScore(t *testing.T) {
 	assertStrings(t, must(redis.Strings(c.Do("ZRANGE", "foo", 0, -1))).([]string), []string{}, false)
 }
 
+func TestHSetThenHGet(t *testing.T) {
+	c := NewFakeRedis()
+	assertInt(t, must(redis.Int(c.Do("HSET", "foo", "key", "value"))), 1)
+	assertStrings(t, []string{must(redis.String(c.Do("HGET", "foo", "key"))).(string)}, []string{"value"}, false)
+}
+
+func TestHSetUpdate(t *testing.T) {
+	c := NewFakeRedis()
+	assertInt(t, must(redis.Int(c.Do("HSET", "foo", "key", "value"))), 1)
+	assertInt(t, must(redis.Int(c.Do("HSET", "foo", "key", "value2"))), 0)
+	assertStrings(t, []string{must(redis.String(c.Do("HGET", "foo", "key"))).(string)}, []string{"value2"}, false)
+}
+
+func TestHGetAll(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("HSET", "foo", "k1", "v1")
+	c.Do("HSET", "foo", "k2", "v2")
+	c.Do("HSET", "foo", "k3", "v3")
+	assertStrings(t, must(redis.Strings(c.Do("HGETALL", "foo"))).([]string), []string{"k1", "v1", "k2", "v2", "k3", "v3"}, false)
+}
+
+func TestHGetAllEmptyKey(t *testing.T) {
+	c := NewFakeRedis()
+	assertStrings(t, must(redis.Strings(c.Do("HGETALL", "foo"))).([]string), []string{}, false)
+}
+
+func TestHLen(t *testing.T) {
+	c := NewFakeRedis()
+	c.Do("HSET", "foo", "k1", "v1")
+	c.Do("HSET", "foo", "k2", "v2")
+	assertInt(t, must(redis.Int(c.Do("HLEN", "foo"))), 2)
+	assertInt(t, must(redis.Int(c.Do("HLEN", "empty"))), 0)
+}
+
 func TestMultiThread(t *testing.T){
 	var wg sync.WaitGroup
 	c := NewFakeRedis()
@@ -354,14 +388,9 @@ func TestMultiThread(t *testing.T){
 // TODO: test_brpop_single_key(self):
 // TODO: test_brpoplpush_multi_keys(self):
 // TODO: test_blocking_operations_when_empty(self):
-// TODO: test_hset_then_hget(self):
-// TODO: test_hset_update(self):
-// TODO: test_hgetall(self):
 // TODO: test_hgetall_with_tuples(self):
-// TODO: test_hgetall_empty_key(self):
 // TODO: test_hexists(self):
 // TODO: test_hkeys(self):
-// TODO: test_hlen(self):
 // TODO: test_hvals(self):
 // TODO: test_hmget(self):
 // TODO: test_hdel(self):

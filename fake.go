@@ -336,4 +336,77 @@ func (c *Conn) fake() {
 
 		return result, nil
 	})
+
+	c.Command("HSET", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		if len(args) != 3 {
+			return nil, fmt.Errorf("Wrong number of arguments passed")
+		}
+		key := toString(args[0])
+		set, err := fake.getHashSet(key)
+		if err != nil {
+			return nil, err
+		}
+		if set == nil {
+			set = make(map[string]interface{})
+			fake.keys[key] = &container{set, _redisHashSet}
+		}
+		inserted := 0
+		field := args[1]
+		value := args[2]
+		if _, found := set[toString(field)]; !found {
+			inserted++
+		}
+		set[toString(field)] = []byte(toString(value))
+		return int64(inserted), nil
+	})
+	
+	c.Command("HLEN", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("Wrong number of arguments passed")
+		}
+		key := toString(args[0])
+		set, err := fake.getHashSet(key)
+		if err != nil {
+			return nil, err
+		}
+		if set == nil {
+			return int64(0), nil
+		}
+		return int64(len(set)), nil
+	})
+	
+	c.Command("HGET", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("Wrong number of arguments passed")
+		}
+		key := toString(args[0])
+		set, err := fake.getHashSet(key)
+		if err != nil {
+			return nil, err
+		}
+		if set == nil {
+			return nil, nil
+		}
+		return set[toString(args[1])], nil
+	})
+
+	c.Command("HGETALL", NewAnyDataArray()).ExpectCallback(func(args []interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("Wrong number of arguments passed")
+		}
+		key := toString(args[0])
+		set, err := fake.getHashSet(key)
+		if err != nil {
+			return nil, err
+		}
+		if set == nil {
+			return make([]interface{}, 0), nil
+		}
+		result := make([]interface{}, 0, len(set) * 2)
+		for field, value := range set {
+			result = append(result, []byte(field))
+			result = append(result, []byte(toString(value)))
+		}
+		return result, nil
+	})
 }

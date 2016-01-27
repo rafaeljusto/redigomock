@@ -9,6 +9,7 @@ const (
 	_redisKey       = 0
 	_redisSet       = 1
 	_redisSortedSet = 2
+	_redisHashSet	= 3
 )
 
 type scoredValue struct {
@@ -45,6 +46,18 @@ func (f *fakeRedis) getRedisStruct(key string, desiredType int) (interface{}, er
 
 func (f *fakeRedis) getSet(key string) (map[string]interface{}, error) {
 	_struct, err := f.getRedisStruct(key, _redisSet)
+	if err != nil {
+		return nil, err
+	}
+	if _struct == nil {
+		return nil, nil
+	}
+	result := _struct.(map[string]interface{})
+	return result, nil
+}
+
+func (f *fakeRedis) getHashSet(key string) (map[string]interface{}, error) {
+	_struct, err := f.getRedisStruct(key, _redisHashSet)
 	if err != nil {
 		return nil, err
 	}
