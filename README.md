@@ -93,3 +93,37 @@ func main() {
 	fmt.Println("Success!")
 }
 ```
+
+mocking a subscription
+----------------------
+
+```
+func CreateSubscriptionMessage(data []byte) []interface{} {
+    values := []interface{}{}
+    values = append(values, interface{}([]byte("message")))
+    values = append(values, interface{}([]byte("chanName")))
+    values = append(values, interface{}(data))
+    return values
+}
+
+rconnSub := redigomock.NewConn()
+
+// Setup the initial subscription message
+values := []interface{}{}
+values = append(values, interface{}([]byte("subscribe")))
+values = append(values, interface{}([]byte("chanName")))
+values = append(values, interface{}([]byte("1")))
+cmd := rconnSub.Command("SUBSCRIBE", subKey).Expect(values)
+rconnSub.ReceiveWait = true
+rconnSub.Subscription = true
+
+// Add a response that will come back as a subscription message
+rconnSub.AddSubscriptionMessage(CreateSubscriptionMessage([]byte("hello")))
+
+//You need to send messages to rconnSub.ReceiveNow in order to get a response.
+//Sending to this channel will block until receive, so do it in a goroutine
+go func() {
+    rconnSub.ReceiveNow <- true //This unlocks the subscribe message
+    rconnSub.ReceiveNow <- true //This sends the "hello" message
+}()
+```
