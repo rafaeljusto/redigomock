@@ -115,7 +115,6 @@ values = append(values, interface{}([]byte("chanName")))
 values = append(values, interface{}([]byte("1")))
 cmd := rconnSub.Command("SUBSCRIBE", subKey).Expect(values)
 rconnSub.ReceiveWait = true
-rconnSub.Subscription = true
 
 // Add a response that will come back as a subscription message
 rconnSub.AddSubscriptionMessage(CreateSubscriptionMessage([]byte("hello")))

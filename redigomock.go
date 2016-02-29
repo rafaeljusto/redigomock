@@ -18,7 +18,6 @@ type queueElement struct {
 // Conn is the struct that can be used where you inject the redigo.Conn on
 // your project
 type Conn struct {
-	Subscription bool            // Enable this to support SubResponses
 	SubResponses []Response      // Queue resposnes for PubSub
 	ReceiveWait  bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
 	ReceiveNow   chan bool       // Used to lock Receive method to simulate a PubSub scenario
@@ -200,7 +199,7 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 	}
 
 	if len(c.queue) == 0 {
-		if c.Subscription && len(c.SubResponses) > 0 {
+		if len(c.SubResponses) > 0 {
 			reply, err = c.SubResponses[0].Response, c.SubResponses[0].Error
 			c.SubResponses = c.SubResponses[1:]
 			return
