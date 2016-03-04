@@ -18,14 +18,15 @@ type queueElement struct {
 // Conn is the struct that can be used where you inject the redigo.Conn on
 // your project
 type Conn struct {
-	ReceiveWait bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
-	ReceiveNow  chan bool       // Used to lock Receive method to simulate a PubSub scenario
-	CloseMock   func() error    // Mock the redigo Close method
-	ErrMock     func() error    // Mock the redigo Err method
-	FlushMock   func() error    // Mock the redigo Flush method
-	commands    []*Cmd          // Slice that stores all registered commands for each connection
-	queue       []queueElement  // Slice that stores all queued commands for each connection
-	stats       map[cmdHash]int // Command calls counter
+	SubResponses []Response      // Queue resposnes for PubSub
+	ReceiveWait  bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
+	ReceiveNow   chan bool       // Used to lock Receive method to simulate a PubSub scenario
+	CloseMock    func() error    // Mock the redigo Close method
+	ErrMock      func() error    // Mock the redigo Err method
+	FlushMock    func() error    // Mock the redigo Flush method
+	commands     []*Cmd          // Slice that stores all registered commands for each connection
+	queue        []queueElement  // Slice that stores all queued commands for each connection
+	stats        map[cmdHash]int // Command calls counter
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -184,6 +185,12 @@ func (c *Conn) Flush() error {
 	return c.FlushMock()
 }
 
+func (c *Conn) AddSubscriptionMessage(msg interface{}) {
+	resp := Response{}
+	resp.Response = msg
+	c.SubResponses = append(c.SubResponses, resp)
+}
+
 // Receive will process the queue created by the Send method, only one item
 // of the queue is processed by Receive call. It will work as the Do method
 func (c *Conn) Receive() (reply interface{}, err error) {
@@ -192,9 +199,13 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 	}
 
 	if len(c.queue) == 0 {
+		if len(c.SubResponses) > 0 {
+			reply, err = c.SubResponses[0].Response, c.SubResponses[0].Error
+			c.SubResponses = c.SubResponses[1:]
+			return
+		}
 		return nil, fmt.Errorf("no more items")
 	}
-
 	commandName, args := c.queue[0].commandName, c.queue[0].args
 	cmd := c.find(commandName, args)
 	if cmd == nil {
