@@ -97,7 +97,7 @@ func main() {
 mocking a subscription
 ----------------------
 
-```
+```go
 func CreateSubscriptionMessage(data []byte) []interface{} {
     values := []interface{}{}
     values = append(values, interface{}([]byte("message")))
