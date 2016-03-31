@@ -143,6 +143,9 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 		cmd := c.queue[0]
 		c.queue = c.queue[1:]
 		reply, err = c.Do(cmd.commandName, cmd.args...)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	cmd := c.find(commandName, args)

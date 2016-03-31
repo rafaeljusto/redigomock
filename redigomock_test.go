@@ -584,3 +584,19 @@ func TestReceiveReturnsErrorWithNoRegisteredCommand(t *testing.T) {
 		t.Errorf("Should have returned a nil response when calling Receive with a command in the queue that was not registered")
 	}
 }
+
+func TestFailCommandOnTransaction(t *testing.T) {
+	connection := NewConn()
+
+	connection.Command("MULTI")
+	connection.Command("SET", "person-123", 123456)
+	connection.Command("EXEC").Expect([]interface{}{"OK", "OK"})
+
+	connection.Send("MULTI")
+	connection.Send("SET", "person-321", 654321)
+	_, err := connection.Do("EXEC")
+
+	if err == nil {
+		t.Errorf("Should have received an error when calling EXEC with a transaction with a command that was not registered")
+	}
+}
