@@ -18,7 +18,7 @@ type queueElement struct {
 // Conn is the struct that can be used where you inject the redigo.Conn on
 // your project
 type Conn struct {
-	SubResponses []Response      // Queue resposnes for PubSub
+	SubResponses []Response      // Queue responses for PubSub
 	ReceiveWait  bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
 	ReceiveNow   chan bool       // Used to lock Receive method to simulate a PubSub scenario
 	CloseMock    func() error    // Mock the redigo Close method
@@ -137,17 +137,22 @@ func (c *Conn) Clear() {
 // response or error is returned. If no registered command is found an error
 // is returned
 func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
-	queueLength := len(c.queue)
-	if queueLength > 0 {
-		// Process the queued commands first
-		cmd := c.queue[0]
-		c.queue = c.queue[1:]
-		reply, err = c.Do(cmd.commandName, cmd.args...)
-		if err != nil {
-			return nil, err
+	// @whazzmaster: Ensures that a call to Do() flushes the command queue
+	//
+	// The redigo package ensures that a call to Do() will flush any commands
+	// that were queued via the Send() method, however a call to Do() on the
+	// mock does not empty the queued commands
+	for _, cmd := range c.queue {
+		if _, err = c.do(cmd.commandName, cmd.args...); err != nil {
+			return
 		}
 	}
+	c.queue = []queueElement{}
 
+	return c.do(commandName, args...)
+}
+
+func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, err error) {
 	cmd := c.find(commandName, args)
 	if cmd == nil {
 		// Didn't find a specific command, try to get a generic one
@@ -166,7 +171,6 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	response := cmd.Responses[0]
 	cmd.Responses = cmd.Responses[1:]
 	return response.Response, response.Error
-
 }
 
 // Send stores the command and arguments to be executed later (by the Receive
