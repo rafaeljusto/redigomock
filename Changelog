@@ -2,11 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased][unreleased]
+## [Unreleased]
 ### Added
 - Fuzzy matching for redigomock command arguments
 - Make commands a property of a connection object, which allows to run tests in parallel
 - Commands calls counters, which allows to identify unused mocked commands (thanks to @rylnd)
+
+### Changed
+- Improve error message adding argument suggestions
 
 ## [1.0.0] - 2015-04-23
 ### Added
