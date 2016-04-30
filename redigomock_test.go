@@ -184,6 +184,22 @@ func TestDoCommandWithUnexpectedCommand(t *testing.T) {
 	}
 }
 
+func TestDoCommandWithUnexpectedCommandWithSuggestions(t *testing.T) {
+	connection := NewConn()
+	connection.Command("HGETALL", "person:1").ExpectError(fmt.Errorf("simulated error"))
+
+	_, err := RetrievePerson(connection, "X")
+	if err == nil {
+		t.Fatal("Should detect a command not registered!")
+	}
+
+	msg := `command HGETALL with arguments []interface {}{"person:X"} not registered in redigomock library. Possible matches are with the arguments:
+* []interface {}{"person:1"}`
+	if err.Error() != msg {
+		t.Errorf("Unexpected error message: %s", err.Error())
+	}
+}
+
 func TestDoCommandWithoutResponse(t *testing.T) {
 	connection := NewConn()
 

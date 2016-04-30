@@ -157,8 +157,18 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 	if cmd == nil {
 		// Didn't find a specific command, try to get a generic one
 		if cmd = c.find(commandName, nil); cmd == nil {
-			return nil, fmt.Errorf("command %s with arguments %#v not registered in redigomock library",
-				commandName, args)
+			var msg string
+			for _, regCmd := range c.commands {
+				if commandName == regCmd.Name {
+					if len(msg) == 0 {
+						msg = ". Possible matches are with the arguments:"
+					}
+					msg += fmt.Sprintf("\n* %#v", regCmd.Args)
+				}
+			}
+
+			return nil, fmt.Errorf("command %s with arguments %#v not registered in redigomock library%s",
+				commandName, args, msg)
 		}
 	}
 
