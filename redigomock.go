@@ -130,6 +130,7 @@ func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
 func (c *Conn) Clear() {
 	c.commands = []*Cmd{}
 	c.queue = []queueElement{}
+	c.stats = make(map[cmdHash]int)
 }
 
 // Do looks in the registered commands (via Command function) if someone
