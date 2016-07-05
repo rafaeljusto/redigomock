@@ -467,8 +467,8 @@ func TestClear(t *testing.T) {
 		"age":  "32",
 	})
 
-	connection.Send("HGETALL", "person:1")
-	connection.Send("HGETALL", "person:2")
+	connection.Do("HGETALL", "person:1")
+	connection.Do("HGETALL", "person:2")
 
 	connection.Clear()
 
@@ -478,6 +478,10 @@ func TestClear(t *testing.T) {
 
 	if len(connection.queue) > 0 {
 		t.Error("Clear function not clearing the queue")
+	}
+
+	if len(connection.stats) > 0 {
+		t.Error("Clear function not clearing stats")
 	}
 }
 
