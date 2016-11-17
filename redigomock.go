@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"sync"
 )
 
 type queueElement struct {
@@ -27,6 +28,7 @@ type Conn struct {
 	commands     []*Cmd          // Slice that stores all registered commands for each connection
 	queue        []queueElement  // Slice that stores all queued commands for each connection
 	stats        map[cmdHash]int // Command calls counter
+	statsMut     sync.Mutex      // Locks the stats so we don't get concurrent map writes
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -173,7 +175,9 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 		}
 	}
 
+	c.statsMut.Lock()
 	c.stats[cmd.hash()]++
+	c.statsMut.Unlock()
 
 	if len(cmd.Responses) == 0 {
 		return nil, nil
@@ -234,7 +238,9 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		}
 	}
 
+	c.statsMut.Lock()
 	c.stats[cmd.hash()]++
+	c.statsMut.Unlock()
 
 	if len(cmd.Responses) == 0 {
 		reply, err = nil, nil
