@@ -28,7 +28,7 @@ type Conn struct {
 	commands     []*Cmd          // Slice that stores all registered commands for each connection
 	queue        []queueElement  // Slice that stores all queued commands for each connection
 	stats        map[cmdHash]int // Command calls counter
-	statsMut     sync.Mutex      // Locks the stats so we don't get concurrent map writes
+	statsMut     sync.RWMutex    // Locks the stats so we don't get concurrent map writes
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -130,6 +130,9 @@ func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
 // Clear removes all registered commands. Useful for connection reuse in test
 // scenarios
 func (c *Conn) Clear() {
+	c.statsMut.Lock()
+	defer c.statsMut.Unlock()
+
 	c.commands = []*Cmd{}
 	c.queue = []queueElement{}
 	c.stats = make(map[cmdHash]int)
@@ -258,5 +261,8 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 // Stats returns the number of times that a command was called in the current
 // connection
 func (c Conn) Stats(cmd *Cmd) int {
+	c.statsMut.RLock()
+	defer c.statsMut.RUnlock()
+	
 	return c.stats[cmd.hash()]
 }
