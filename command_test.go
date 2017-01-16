@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"github.com/garyburd/redigo/redis"
 	"testing"
 )
 
@@ -302,6 +303,29 @@ func TestExpectError(t *testing.T) {
 
 	if cmd.Responses[0].Error.Error() != "error" {
 		t.Fatal("Storing wrong error")
+	}
+}
+
+func TestExpectSlice(t *testing.T) {
+	connection := NewConn()
+
+	field1 := []byte("hello")
+	connection.Command("HMGET", "key", "field1", "field2").ExpectSlice(field1, nil)
+	if len(connection.commands) != 1 {
+		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(connection.commands))
+	}
+
+	reply, err := redis.ByteSlices(connection.Do("HMGET", "key", "field1", "field2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(reply[0]) != string(field1) {
+		t.Fatalf("reply[0] not hello but %s", string(reply[0]))
+	}
+
+	if reply[1] != nil {
+		t.Fatal("reply[1] not nil")
 	}
 }
 

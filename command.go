@@ -97,6 +97,17 @@ func (c *Cmd) ExpectError(err error) *Cmd {
 	return c
 }
 
+// ExpectSlice make it easier to expect slice value
+// e.g - HMGET command
+func (c *Cmd) ExpectSlice(resp ...interface{}) *Cmd {
+	response := []interface{}{}
+	for _, r := range resp {
+		response = append(response, r)
+	}
+	c.Responses = append(c.Responses, Response{response, nil})
+	return c
+}
+
 // hash generates a unique identifier for the command
 func (c Cmd) hash() cmdHash {
 	output := c.Name
