@@ -627,14 +627,20 @@ func TestAllCommandsCalled(t *testing.T) {
 
 	connection.Do("GET", "hello")
 	// this error is expected
-	err := connection.AllCommandsCalled()
+	err := connection.ExpectationsWereMet()
 	if err == nil {
 		t.Fatal("Should have received and error because SET command not called yet")
 	}
 
 	connection.Do("SET", "hello", "world")
-	err = connection.AllCommandsCalled()
+	err = connection.ExpectationsWereMet()
 	if err != nil {
 		t.Fatal("Should have no error due to SET already called")
+	}
+
+	connection.Do("DEL", "hello")
+	err = connection.ExpectationsWereMet()
+	if err == nil {
+		t.Fatal("Should have error due to DEL is unexpected")
 	}
 }
