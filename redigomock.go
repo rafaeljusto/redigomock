@@ -7,6 +7,7 @@ package redigomock
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"sync"
 )
@@ -182,6 +183,7 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 	c.stats[cmd.hash()]++
 	c.statsMut.Unlock()
 
+	cmd.Called = true
 	if len(cmd.Responses) == 0 {
 		return nil, nil
 	}
@@ -263,6 +265,21 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 func (c Conn) Stats(cmd *Cmd) int {
 	c.statsMut.RLock()
 	defer c.statsMut.RUnlock()
-	
+
 	return c.stats[cmd.hash()]
+}
+
+func (c Conn) AllCommandsCalled() error {
+	errMsg := ""
+	for _, cmd := range c.commands {
+		if !cmd.Called {
+			errMsg = fmt.Sprintf("%s- Command %s with arguments %#v expected but never called.\n", errMsg, cmd.Name, cmd.Args)
+		}
+	}
+
+	if errMsg != "" {
+		return errors.New(errMsg)
+	} else {
+		return nil
+	}
 }

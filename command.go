@@ -21,6 +21,7 @@ type Cmd struct {
 	Name      string        // Name of the command
 	Args      []interface{} // Arguments of the command
 	Responses []Response    // Slice of returned responses
+	Called    bool          // State for this command called or not
 }
 
 // cmdHash stores a unique identifier of the command
