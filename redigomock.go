@@ -7,7 +7,6 @@ package redigomock
 import (
 	"crypto/sha1"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"sync"
 )
@@ -269,6 +268,8 @@ func (c Conn) Stats(cmd *Cmd) int {
 	return c.stats[cmd.hash()]
 }
 
+// AllCommandsCalled can guarantee that all commands that was set on unit tests
+// called
 func (c Conn) AllCommandsCalled() error {
 	errMsg := ""
 	for _, cmd := range c.commands {
@@ -278,7 +279,7 @@ func (c Conn) AllCommandsCalled() error {
 	}
 
 	if errMsg != "" {
-		return errors.New(errMsg)
+		return fmt.Errorf("%s", errMsg)
 	} else {
 		return nil
 	}
