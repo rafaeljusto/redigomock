@@ -191,7 +191,9 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 	}
 
 	response := cmd.Responses[0]
-	cmd.Responses = cmd.Responses[1:]
+	if len(cmd.Responses) > 1 {
+		cmd.Responses = cmd.Responses[1:]
+	}
 	return response.Response, response.Error
 }
 
