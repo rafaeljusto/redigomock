@@ -26,7 +26,7 @@ type Cmd struct {
 // cmdHash stores a unique identifier of the command
 type cmdHash string
 
-// equal verify if a command/argumets is related to a registered command
+// equal verify if a command/arguments is related to a registered command
 func equal(commandName string, args []interface{}, cmd *Cmd) bool {
 	if commandName != cmd.Name || len(args) != len(cmd.Args) {
 		return false
@@ -68,8 +68,8 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 	return true
 }
 
-// Expect sets a response for this command. Everytime a Do or Receive methods
-// are executed for a registered command this response or error will be
+// Expect sets a response for this command. Everytime a Do or Receive method
+// is executed for a registered command this response or error will be
 // returned. Expect call returns a pointer to Cmd struct, so you can chain
 // Expect calls. Chained responses will be returned on subsequent calls
 // matching this commands arguments in FIFO order

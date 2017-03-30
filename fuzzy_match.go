@@ -2,14 +2,14 @@ package redigomock
 
 import "reflect"
 
-// FuzzyMatcher is an interface that exports exports one function. It can be
-// passed to the Command as a argument. When the command is evaluated agains
+// FuzzyMatcher is an interface that exports one function. It can be
+// passed to the Command as an argument. When the command is evaluated against
 // data provided in mock connection Do call, FuzzyMatcher will call Match on the
-// argument and returns true if argument fulfils constraints set in concrete
+// argument and return true if the argument fulfills constraints set in concrete
 // implementation
 type FuzzyMatcher interface {
 
-	// Match takes an argument passed to mock connection Do call and check if
+	// Match takes an argument passed to mock connection Do call and checks if
 	// it fulfills constraints set in concrete implementation of this interface
 	Match(interface{}) bool
 }
@@ -20,14 +20,14 @@ func NewAnyInt() FuzzyMatcher {
 	return anyInt{}
 }
 
-// NewAnyDouble returns a FuzzyMatcher instance mathing any double passed as
+// NewAnyDouble returns a FuzzyMatcher instance matching any double passed as
 // an argument
 func NewAnyDouble() FuzzyMatcher {
 	return anyDouble{}
 }
 
-// NewAnyData returns a FuzzyMatcher instance matching every data passed as
-// an arguments (returns true by default)
+// NewAnyData returns a FuzzyMatcher instance matching every data type passed
+// as an argument (returns true by default)
 func NewAnyData() FuzzyMatcher {
 	return anyData{}
 }
