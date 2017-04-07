@@ -29,6 +29,7 @@ type Conn struct {
 	queue        []queueElement  // Slice that stores all queued commands for each connection
 	stats        map[cmdHash]int // Command calls counter
 	statsMut     sync.RWMutex    // Locks the stats so we don't get concurrent map writes
+	Errors       []error         // Storage of all error occured in do functions
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -173,8 +174,10 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 				}
 			}
 
-			return nil, fmt.Errorf("command %s with arguments %#v not registered in redigomock library%s",
+			err := fmt.Errorf("command %s with arguments %#v not registered in redigomock library%s",
 				commandName, args, msg)
+			c.Errors = append(c.Errors, err)
+			return nil, err
 		}
 	}
 
@@ -182,12 +185,15 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 	c.stats[cmd.hash()]++
 	c.statsMut.Unlock()
 
+	cmd.Called = true
 	if len(cmd.Responses) == 0 {
 		return nil, nil
 	}
 
 	response := cmd.Responses[0]
-	cmd.Responses = cmd.Responses[1:]
+	if len(cmd.Responses) > 1 {
+		cmd.Responses = cmd.Responses[1:]
+	}
 	return response.Response, response.Error
 }
 
@@ -263,6 +269,27 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 func (c Conn) Stats(cmd *Cmd) int {
 	c.statsMut.RLock()
 	defer c.statsMut.RUnlock()
-	
+
 	return c.stats[cmd.hash()]
+}
+
+// ExpectationsWereMet can guarantee that all commands that was set on unit tests
+// called or call of unregistered command can be caught here too
+func (c Conn) ExpectationsWereMet() error {
+	errMsg := ""
+	for _, err := range c.Errors {
+		errMsg = fmt.Sprintf("%s%s\n", errMsg, err.Error())
+	}
+
+	for _, cmd := range c.commands {
+		if !cmd.Called {
+			errMsg = fmt.Sprintf("%sCommand %s with arguments %#v expected but never called.\n", errMsg, cmd.Name, cmd.Args)
+		}
+	}
+
+	if errMsg != "" {
+		return fmt.Errorf("%s", errMsg)
+	}
+
+	return nil
 }

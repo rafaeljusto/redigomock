@@ -618,3 +618,29 @@ func TestFailCommandOnTransaction(t *testing.T) {
 		t.Errorf("Should have received an error when calling EXEC with a transaction with a command that was not registered")
 	}
 }
+
+func TestAllCommandsCalled(t *testing.T) {
+	connection := NewConn()
+
+	connection.Command("GET", "hello").Expect("world")
+	connection.Command("SET", "hello", "world")
+
+	connection.Do("GET", "hello")
+	// this error is expected
+	err := connection.ExpectationsWereMet()
+	if err == nil {
+		t.Fatal("Should have received and error because SET command not called yet")
+	}
+
+	connection.Do("SET", "hello", "world")
+	err = connection.ExpectationsWereMet()
+	if err != nil {
+		t.Fatal("Should have no error due to SET already called")
+	}
+
+	connection.Do("DEL", "hello")
+	err = connection.ExpectationsWereMet()
+	if err == nil {
+		t.Fatal("Should have error due to DEL is unexpected")
+	}
+}
