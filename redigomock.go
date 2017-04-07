@@ -289,7 +289,7 @@ func (c Conn) ExpectationsWereMet() error {
 
 	if errMsg != "" {
 		return fmt.Errorf("%s", errMsg)
-	} else {
-		return nil
 	}
+
+	return nil
 }
