@@ -329,6 +329,30 @@ func TestExpectSlice(t *testing.T) {
 	}
 }
 
+func TestExpectSliceFromStrings(t *testing.T) {
+	connection := NewConn()
+
+	field1 := "hello"
+	field2 := "redigo"
+	connection.Command("HMGET", "key", "field1", "field2").ExpectStringSlice(field1, field2)
+	if len(connection.commands) != 1 {
+		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(connection.commands))
+	}
+
+	reply, err := redis.Strings(connection.Do("HMGET", "key", "field1", "field2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reply[0] != field1 {
+		t.Fatalf("reply[0] not %s but %s", field1, reply[0])
+	}
+
+	if reply[1] != field2 {
+		t.Fatalf("reply[1] not %s but %s", field2, reply[1])
+	}
+}
+
 func TestFind(t *testing.T) {
 	connection := NewConn()
 

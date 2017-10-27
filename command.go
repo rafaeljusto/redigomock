@@ -109,6 +109,17 @@ func (c *Cmd) ExpectSlice(resp ...interface{}) *Cmd {
 	return c
 }
 
+// ExpectStringSlice makes it easier to expect a slice of strings, plays nicely
+// with redigo.Strings
+func (c *Cmd) ExpectStringSlice(resp ...string) *Cmd {
+	response := []interface{}{}
+	for _, r := range resp {
+		response = append(response, []byte(r))
+	}
+	c.Responses = append(c.Responses, Response{response, nil})
+	return c
+}
+
 // hash generates a unique identifier for the command
 func (c Cmd) hash() cmdHash {
 	output := c.Name
