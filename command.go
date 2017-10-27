@@ -69,7 +69,7 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 	return true
 }
 
-// Expect sets a response for this command. Everytime a Do or Receive method
+// Expect sets a response for this command. Every time a Do or Receive method
 // is executed for a registered command this response or error will be
 // returned. Expect call returns a pointer to Cmd struct, so you can chain
 // Expect calls. Chained responses will be returned on subsequent calls
@@ -98,7 +98,7 @@ func (c *Cmd) ExpectError(err error) *Cmd {
 	return c
 }
 
-// ExpectSlice make it easier to expect slice value
+// ExpectSlice makes it easier to expect slice value
 // e.g - HMGET command
 func (c *Cmd) ExpectSlice(resp ...interface{}) *Cmd {
 	response := []interface{}{}
