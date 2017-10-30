@@ -69,7 +69,7 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 	return true
 }
 
-// Expect sets a response for this command. Everytime a Do or Receive method
+// Expect sets a response for this command. Every time a Do or Receive method
 // is executed for a registered command this response or error will be
 // returned. Expect call returns a pointer to Cmd struct, so you can chain
 // Expect calls. Chained responses will be returned on subsequent calls
@@ -98,12 +98,23 @@ func (c *Cmd) ExpectError(err error) *Cmd {
 	return c
 }
 
-// ExpectSlice make it easier to expect slice value
+// ExpectSlice makes it easier to expect slice value
 // e.g - HMGET command
 func (c *Cmd) ExpectSlice(resp ...interface{}) *Cmd {
 	response := []interface{}{}
 	for _, r := range resp {
 		response = append(response, r)
+	}
+	c.Responses = append(c.Responses, Response{response, nil})
+	return c
+}
+
+// ExpectStringSlice makes it easier to expect a slice of strings, plays nicely
+// with redigo.Strings
+func (c *Cmd) ExpectStringSlice(resp ...string) *Cmd {
+	response := []interface{}{}
+	for _, r := range resp {
+		response = append(response, []byte(r))
 	}
 	c.Responses = append(c.Responses, Response{response, nil})
 	return c
