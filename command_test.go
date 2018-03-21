@@ -8,8 +8,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
 	"testing"
+
+	"github.com/gomodule/redigo/redis"
 )
 
 func TestCommand(t *testing.T) {
