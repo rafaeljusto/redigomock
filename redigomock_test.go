@@ -211,6 +211,37 @@ func TestDoCommandWithoutResponse(t *testing.T) {
 	}
 }
 
+func TestDoCommandWithNilArgument(t *testing.T) {
+	connection := NewConn()
+	connection.Command("MGET", "1", nil, "2").Expect([]interface{}{"result1", nil, "result2"})
+
+	rawValues, err := connection.Do("MGET", "1", nil, "2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	values, ok := rawValues.([]interface{})
+	if !ok {
+		t.Fatalf("unexpected returned type %T", rawValues)
+	}
+
+	if len(values) != 3 {
+		t.Fatalf("unexpected number of values (%d)", len(values))
+	}
+
+	if values[0] != "result1" {
+		t.Errorf("unexpected value[0]: %v", values[0])
+	}
+
+	if values[1] != nil {
+		t.Errorf("unexpected value[1]: %v", values[1])
+	}
+
+	if values[2] != "result2" {
+		t.Errorf("unexpected value[2]: %v", values[2])
+	}
+}
+
 func TestSendFlushReceive(t *testing.T) {
 	connection := NewConn()
 

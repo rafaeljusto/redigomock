@@ -61,5 +61,9 @@ func (matcher anyData) Match(input interface{}) bool {
 }
 
 func implementsFuzzy(input interface{}) bool {
-	return reflect.TypeOf(input).Implements(reflect.TypeOf((*FuzzyMatcher)(nil)).Elem())
+	inputType := reflect.TypeOf(input)
+	if inputType == nil {
+		return false
+	}
+	return inputType.Implements(reflect.TypeOf((*FuzzyMatcher)(nil)).Elem())
 }
