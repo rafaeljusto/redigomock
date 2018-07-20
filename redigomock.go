@@ -144,17 +144,9 @@ func (c *Conn) Clear() {
 // response or error is returned. If no registered command is found an error
 // is returned
 func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
-	// @whazzmaster: Ensures that a call to Do() flushes the command queue
-	//
-	// The redigo package ensures that a call to Do() will flush any commands
-	// that were queued via the Send() method, however a call to Do() on the
-	// mock does not empty the queued commands
-	for _, cmd := range c.queue {
-		if _, err = c.do(cmd.commandName, cmd.args...); err != nil {
-			return
-		}
+	if err = c.Flush(); err != nil {
+		return
 	}
-	c.queue = []queueElement{}
 
 	return c.do(commandName, args...)
 }
@@ -209,11 +201,18 @@ func (c *Conn) Send(commandName string, args ...interface{}) error {
 
 // Flush can be mocked using the Conn struct attributes
 func (c *Conn) Flush() error {
-	if c.FlushMock == nil {
-		return nil
+	if c.FlushMock != nil {
+		return c.FlushMock()
 	}
 
-	return c.FlushMock()
+	// @whazzmaster: flushes the command queue
+	for _, cmd := range c.queue {
+		if _, err := c.do(cmd.commandName, cmd.args...); err != nil {
+			return err
+		}
+	}
+	c.queue = []queueElement{}
+	return nil
 }
 
 func (c *Conn) AddSubscriptionMessage(msg interface{}) {
