@@ -337,89 +337,68 @@ func TestSendReceiveWithWait(t *testing.T) {
 	}
 }
 
-func assertChannelEmpty(t *testing.T, responses chan []byte) {
-	select {
-	case _ = <-responses:
-		t.Error("Got message that should not have been sent")
-	default:
-		return
-	}
-}
-
 func TestPubSub(t *testing.T) {
+	channel := "subchannel"
 	conn := NewConn()
 	conn.ReceiveWait = true
-	redisChannel := "subchannel"
 
-	conn.Command("SUBSCRIBE", redisChannel).Expect([]interface{}{
+	conn.Command("SUBSCRIBE", channel).Expect([]interface{}{
 		[]byte("subscribe"),
-		[]byte(redisChannel),
+		[]byte(channel),
 		[]byte("1"),
 	})
+
+	// check some values are correct
+	if len(conn.commands) != 1 {
+		t.Errorf("unexpected number of commands, expected '%d', got '%d'", 1, len(conn.commands))
+	}
+
+	psc := redis.PubSubConn{Conn: conn}
+	if err := psc.Subscribe(channel); err != nil {
+		t.Error(err)
+	}
+	defer psc.Unsubscribe(channel)
+
+	if err := conn.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+
 	messages := [][]byte{
 		[]byte("value1"),
 		[]byte("value2"),
 		[]byte("value3"),
 		[]byte("finished"),
 	}
+
 	for _, message := range messages {
 		conn.AddSubscriptionMessage([]interface{}{
 			[]byte("message"),
-			[]byte(redisChannel),
+			[]byte(channel),
 			message,
 		})
 	}
-	//Check some values are correct
-	if len(conn.commands) != 1 {
-		t.Error("Initial subscription message not set correctly")
-	}
+
 	if len(conn.SubResponses) != 4 {
-		t.Error("PubSub messages not queued up corectly")
+		t.Errorf("unexpected number of sub-responses, expected '%d', got '%d'", 4, len(conn.SubResponses))
 	}
 
-	//Use the pub sub connection
+	// function to trigger a new pub/sub message received from the redis server
 	nextMessage := func() {
 		conn.ReceiveNow <- true
 	}
-	go nextMessage() //Allow the subscribe message to come through
 
-	psc := redis.PubSubConn{Conn: conn}
-	psc.Subscribe(redisChannel)
-	defer psc.Unsubscribe()
-	//Receive the subscribe message
-	subResponse := psc.Receive()
-	switch smsg := subResponse.(type) {
-	case redis.Subscription:
-		if smsg.Kind != "subscribe" {
-			t.Error("Subscription ack kind is wrong")
-		}
-		if smsg.Channel != redisChannel {
-			t.Error("Subscription ack channel is wrong")
-		}
-		if smsg.Count != 1 {
-			t.Error("Subscription ack count is wrong")
-		}
-	default:
-		t.Error("Got wrong type back on initial subscription")
-	}
-	//Receive the other messages - control when they come
-	testResponse := make(chan []byte, 1)
-	go func() {
-		for {
-			switch msg := psc.Receive().(type) {
-			case redis.Message:
-				testResponse <- msg.Data
-			}
-		}
-	}()
-	for _, expMsg := range messages {
-		assertChannelEmpty(t, testResponse)
+	for _, expectedMessage := range messages {
 		go nextMessage()
-		msg := <-testResponse
-		if !reflect.DeepEqual(msg, expMsg) {
-			t.Error("Expected message", string(expMsg), "got", string(msg))
+
+		switch msg := psc.Receive().(type) {
+		case redis.Message:
+			if !reflect.DeepEqual(msg.Data, expectedMessage) {
+				t.Errorf("expected message '%s'and got '%s'", string(expectedMessage), string(msg.Data))
+			}
+		default:
+			t.Errorf("got wrong message type '%T' for message", msg)
+			break
 		}
-		assertChannelEmpty(t, testResponse)
 	}
 }
 
