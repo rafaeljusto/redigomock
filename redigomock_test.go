@@ -242,6 +242,66 @@ func TestDoCommandWithNilArgument(t *testing.T) {
 	}
 }
 
+func TestDoEmptyCommand(t *testing.T) {
+	c := NewConn()
+	reply, err := c.Do("")
+	if reply != nil || err != nil {
+		t.Errorf("Expected nil values received: %v, %v", reply, err)
+	}
+}
+
+func TestDoEmptyFlushPipeline(t *testing.T) {
+	c := NewConn()
+
+	cmds := []struct {
+		cmd []string
+		val string
+	}{
+		{
+			cmd: []string{"HGET", "somekey"},
+			val: "someval",
+		},
+		{
+			cmd: []string{"HGET", "anotherkey"},
+			val: "anotherval",
+		},
+	}
+
+	for _, cmd := range cmds {
+		args := []interface{}{}
+		for _, arg := range cmd.cmd[1:] {
+			args = append(args, arg)
+		}
+		c.Command(cmd.cmd[0], args...).Expect(cmd.val)
+		c.Send(cmd.cmd[0], args...)
+	}
+
+	reply, err := c.Do("")
+	if err != nil {
+		t.Errorf("Error received when trying to flush pipeline")
+	}
+
+	replies, ok := reply.([]interface{})
+	if !ok {
+		t.Errorf("Didn't receive slice of replies received type '%T'", reply)
+	}
+
+	if len(replies) != len(cmds) {
+		t.Errorf("Expected %d replies and received %d", len(cmds), len(replies))
+	}
+
+	for i, r := range replies {
+		val, ok := r.(string)
+		if !ok {
+			t.Errorf("Didn't receive string")
+		}
+		if cmds[i].val != val {
+			t.Errorf("Didn't receive expected: %s != %s", cmds[i].val, val)
+		}
+	}
+
+}
+
 func TestSendFlushReceive(t *testing.T) {
 	connection := NewConn()
 
@@ -385,6 +445,15 @@ func TestPubSub(t *testing.T) {
 	// function to trigger a new pub/sub message received from the redis server
 	nextMessage := func() {
 		conn.ReceiveNow <- true
+	}
+
+	// Should receive the subscription message first
+	go nextMessage()
+	switch msg := psc.Receive().(type) {
+	case redis.Subscription:
+		break
+	default:
+		t.Errorf("Expected subscribe message type but received '%T'", msg)
 	}
 
 	for _, expectedMessage := range messages {
