@@ -16,6 +16,11 @@ type queueElement struct {
 	args        []interface{}
 }
 
+type replyElement struct {
+	reply interface{}
+	err   error
+}
+
 // Conn is the struct that can be used where you inject the redigo.Conn on
 // your project
 type Conn struct {
@@ -27,6 +32,7 @@ type Conn struct {
 	FlushMock    func() error    // Mock the redigo Flush method
 	commands     []*Cmd          // Slice that stores all registered commands for each connection
 	queue        []queueElement  // Slice that stores all queued commands for each connection
+	replies      []replyElement  // Slice that stores all queued replies
 	stats        map[cmdHash]int // Command calls counter
 	statsMut     sync.RWMutex    // Locks the stats so we don't get concurrent map writes
 	Errors       []error         // Storage of all error occured in do functions
@@ -136,6 +142,7 @@ func (c *Conn) Clear() {
 
 	c.commands = []*Cmd{}
 	c.queue = []queueElement{}
+	c.replies = []replyElement{}
 	c.stats = make(map[cmdHash]int)
 }
 
@@ -144,8 +151,36 @@ func (c *Conn) Clear() {
 // response or error is returned. If no registered command is found an error
 // is returned
 func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
-	if err = c.Flush(); err != nil {
-		return
+	if commandName == "" {
+		if err := c.Flush(); err != nil {
+			return nil, err
+		}
+
+		if len(c.replies) == 0 {
+			return nil, nil
+		}
+
+		replies := []interface{}{}
+		for _, v := range c.replies {
+			if v.err != nil {
+				return nil, v.err
+			}
+			replies = append(replies, v.reply)
+		}
+		c.replies = []replyElement{}
+		return replies, nil
+	}
+
+	if len(c.queue) != 0 || len(c.replies) != 0 {
+		if err := c.Flush(); err != nil {
+			return nil, err
+		}
+		for _, v := range c.replies {
+			if v.err != nil {
+				return nil, v.err
+			}
+		}
+		c.replies = []replyElement{}
 	}
 
 	return c.do(commandName, args...)
@@ -205,13 +240,14 @@ func (c *Conn) Flush() error {
 		return c.FlushMock()
 	}
 
-	// @whazzmaster: flushes the command queue
-	for _, cmd := range c.queue {
-		if _, err := c.do(cmd.commandName, cmd.args...); err != nil {
-			return err
+	if len(c.queue) > 0 {
+		for _, cmd := range c.queue {
+			reply, err := c.do(cmd.commandName, cmd.args...)
+			c.replies = append(c.replies, replyElement{reply: reply, err: err})
 		}
+		c.queue = []queueElement{}
 	}
-	c.queue = []queueElement{}
+
 	return nil
 }
 
@@ -228,7 +264,7 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		<-c.ReceiveNow
 	}
 
-	if len(c.queue) == 0 {
+	if len(c.queue) == 0 && len(c.replies) == 0 {
 		if len(c.SubResponses) > 0 {
 			reply, err = c.SubResponses[0].Response, c.SubResponses[0].Error
 			c.SubResponses = c.SubResponses[1:]
@@ -236,30 +272,13 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		}
 		return nil, fmt.Errorf("no more items")
 	}
-	commandName, args := c.queue[0].commandName, c.queue[0].args
-	cmd := c.find(commandName, args)
-	if cmd == nil {
-		// Didn't find a specific command, try to get a generic one
-		if cmd = c.find(commandName, nil); cmd == nil {
-			return nil, fmt.Errorf("command %s with arguments %#v not registered in redigomock library",
-				commandName, args)
-		}
+
+	if err := c.Flush(); err != nil {
+		return nil, err
 	}
 
-	c.statsMut.Lock()
-	c.stats[cmd.hash()]++
-	c.statsMut.Unlock()
-
-	if len(cmd.Responses) == 0 {
-		reply, err = nil, nil
-	} else {
-		response := cmd.Responses[0]
-		cmd.Responses = cmd.Responses[1:]
-
-		reply, err = response.Response, response.Error
-	}
-
-	c.queue = c.queue[1:]
+	reply, err = c.replies[0].reply, c.replies[0].err
+	c.replies = c.replies[1:]
 	return
 }
 
