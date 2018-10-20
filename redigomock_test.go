@@ -10,6 +10,9 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+var _ redis.Conn = &Conn{}
+var _ redis.ConnWithTimeout = &Conn{}
+
 type Person struct {
 	Name string `redis:"name"`
 	Age  int    `redis:"age"`
