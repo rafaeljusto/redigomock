@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
+	"time"
 )
 
 type queueElement struct {
@@ -224,6 +225,12 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 	return response.Response, response.Error
 }
 
+// DoWithTimeout is a helper function for Do call to satisfy the ConnWithTimeout
+// interface.
+func (c *Conn) DoWithTimeout(readTimeout time.Duration, cmd string, args ...interface{}) (interface{}, error) {
+	return c.Do(cmd, args...)
+}
+
 // Send stores the command and arguments to be executed later (by the Receive
 // function) in a first-come first-served order
 func (c *Conn) Send(commandName string, args ...interface{}) error {
@@ -251,6 +258,8 @@ func (c *Conn) Flush() error {
 	return nil
 }
 
+// AddSubscriptionMessage register a response to be returned by the receive
+// call.
 func (c *Conn) AddSubscriptionMessage(msg interface{}) {
 	resp := Response{}
 	resp.Response = msg
@@ -282,9 +291,15 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 	return
 }
 
+// ReceiveWithTimeout is a helper function for Receive call to satisfy the
+// ConnWithTimeout interface.
+func (c *Conn) ReceiveWithTimeout(timeout time.Duration) (interface{}, error) {
+	return c.Receive()
+}
+
 // Stats returns the number of times that a command was called in the current
 // connection
-func (c Conn) Stats(cmd *Cmd) int {
+func (c *Conn) Stats(cmd *Cmd) int {
 	c.statsMut.RLock()
 	defer c.statsMut.RUnlock()
 
@@ -293,7 +308,7 @@ func (c Conn) Stats(cmd *Cmd) int {
 
 // ExpectationsWereMet can guarantee that all commands that was set on unit tests
 // called or call of unregistered command can be caught here too
-func (c Conn) ExpectationsWereMet() error {
+func (c *Conn) ExpectationsWereMet() error {
 	errMsg := ""
 	for _, err := range c.Errors {
 		errMsg = fmt.Sprintf("%s%s\n", errMsg, err.Error())
