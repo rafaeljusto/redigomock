@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.2.0] - 2019-02-02
+### Added
+- ExpectStringSlice to simplify expecting a slice of strings
+
+### Fix
+- `Do` command with `nil` argument panics `implementsFuzzy`
+- `Flush` should process the queue of `Send` commands
+- `Conn` should satisfy `redis.Conn` and `redis.ConnWithTimeout`
+- Typos
+
+### Changed
+- Using `gomodule/redigo` instead of `garyburd/redigo`
+
 ## [2.1.0] - 2017-07-20
 ### Added
 - New ExpectSlice helper method
