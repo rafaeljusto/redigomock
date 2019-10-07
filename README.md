@@ -126,3 +126,15 @@ go func() {
     rconnSub.ReceiveNow <- true //This sends the "hello" message
 }()
 ```
+
+connections pool
+----------------
+
+```go
+conn := redigomock.NewConn()
+pool := &redis.Pool{
+	// Return the same connection mock for each Get() call.
+	Dial:    func() (redis.Conn, error) { return conn, nil },
+	MaxIdle: 10,
+}
+```
