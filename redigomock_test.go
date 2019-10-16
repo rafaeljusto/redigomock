@@ -533,6 +533,38 @@ func TestDummyFunctions(t *testing.T) {
 	}
 }
 
+func TestSkipDummyFlushFunction(t *testing.T) {
+	connection := NewConn()
+
+	errResult := false
+	connection.Command("PING").Expect("PONG")
+	connection.FlushSkippableMock = func() error {
+		if errResult {
+			return fmt.Errorf("flush error")
+		}
+		return nil
+	}
+
+	connection.Send("PING")
+	err := connection.Flush()
+	if err != nil {
+		t.Errorf("Not mocking Flush method correctly. Got unexpected error “%v”", err)
+	}
+	s, err := connection.Receive()
+	if err != nil || s != "PONG" {
+		t.Errorf("Not mocking Flush method correctly. Got unexpected result “%v” and error “%v”", s, err)
+	}
+
+	errResult = true
+	connection.Clear()
+	connection.Command("PING").Expect("PONG")
+	connection.Send("PING")
+	err = connection.Flush()
+	if err == nil || err.Error() != "flush error" {
+		t.Errorf("Not mocking Flush method correctly. Expected “flush error” and got “%v”", err)
+	}
+}
+
 func TestClear(t *testing.T) {
 	connection := NewConn()
 
