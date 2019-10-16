@@ -25,18 +25,19 @@ type replyElement struct {
 // Conn is the struct that can be used where you inject the redigo.Conn on
 // your project
 type Conn struct {
-	SubResponses []Response      // Queue responses for PubSub
-	ReceiveWait  bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
-	ReceiveNow   chan bool       // Used to lock Receive method to simulate a PubSub scenario
-	CloseMock    func() error    // Mock the redigo Close method
-	ErrMock      func() error    // Mock the redigo Err method
-	FlushMock    func() error    // Mock the redigo Flush method
-	commands     []*Cmd          // Slice that stores all registered commands for each connection
-	queue        []queueElement  // Slice that stores all queued commands for each connection
-	replies      []replyElement  // Slice that stores all queued replies
-	stats        map[cmdHash]int // Command calls counter
-	statsMut     sync.RWMutex    // Locks the stats so we don't get concurrent map writes
-	Errors       []error         // Storage of all error occured in do functions
+	SubResponses       []Response      // Queue responses for PubSub
+	ReceiveWait        bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
+	ReceiveNow         chan bool       // Used to lock Receive method to simulate a PubSub scenario
+	CloseMock          func() error    // Mock the redigo Close method
+	ErrMock            func() error    // Mock the redigo Err method
+	FlushMock          func() error    // Mock the redigo Flush method
+	FlushSkippableMock func() error    // Mock the redigo Flush method, will be ignore if return with a nil.
+	commands           []*Cmd          // Slice that stores all registered commands for each connection
+	queue              []queueElement  // Slice that stores all queued commands for each connection
+	replies            []replyElement  // Slice that stores all queued replies
+	stats              map[cmdHash]int // Command calls counter
+	statsMut           sync.RWMutex    // Locks the stats so we don't get concurrent map writes
+	Errors             []error         // Storage of all error occured in do functions
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -245,6 +246,11 @@ func (c *Conn) Send(commandName string, args ...interface{}) error {
 func (c *Conn) Flush() error {
 	if c.FlushMock != nil {
 		return c.FlushMock()
+	}
+	if c.FlushSkippableMock != nil {
+		if err := c.FlushSkippableMock(); err != nil {
+			return err
+		}
 	}
 
 	if len(c.queue) > 0 {
