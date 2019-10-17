@@ -131,6 +131,8 @@ connections pool
 ----------------
 
 ```go
+// Note you cannot get access to the connection via the pool,
+// the only way is to use this conn variable.
 conn := redigomock.NewConn()
 pool := &redis.Pool{
 	// Return the same connection mock for each Get() call.
