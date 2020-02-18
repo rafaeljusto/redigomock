@@ -77,6 +77,31 @@ func TestDoCommand(t *testing.T) {
 	}
 }
 
+func TestPanickyDoCommand(t *testing.T) {
+
+	panicMsg := "panic-message"
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("Expected a panic to happen")
+		}
+		recoverMsg, ok := r.(string)
+		if ok == false {
+			t.Errorf("Expected the recovered panic value to be a string")
+		}
+		if recoverMsg != panicMsg {
+			t.Errorf("Expected the recovered panic value to be %s", panicMsg)
+		}
+	}()
+
+	connection := NewConn()
+
+	connection.Command("HGETALL", "person:1").ExpectPanic(panicMsg)
+
+	RetrievePerson(connection, "1")
+}
+
 func TestDoCommandMultipleReturnValues(t *testing.T) {
 	connection := NewConn()
 

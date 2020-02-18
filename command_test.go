@@ -307,6 +307,26 @@ func TestExpectError(t *testing.T) {
 	}
 }
 
+func TestExpectPanic(t *testing.T) {
+	connection := NewConn()
+
+	connection.Command("HGETALL").ExpectPanic("panic")
+
+	if len(connection.commands) != 1 {
+		t.Fatalf("Did not registered the command. Expected '1' and got '%d'", len(connection.commands))
+	}
+
+	cmd := connection.commands[0]
+
+	if cmd.Responses[0].Panic == nil {
+		t.Fatal("Panic not defined")
+	}
+
+	if cmd.Responses[0].Panic != "panic" {
+		t.Fatal("Storing wrong panic message")
+	}
+}
+
 func TestExpectSlice(t *testing.T) {
 	connection := NewConn()
 
