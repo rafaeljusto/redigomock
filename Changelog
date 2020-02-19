@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.3.0] - 2020-02-19
+### Added
+- `ExpectPanic` to support expectations of panics instead of responses or errors
+
+## [2.2.1] - 2019-11-17
+### Added
+- `FlushSkippableMock` should allow `Flush` to continue its processing when the mock return a nil
+
 ## [2.2.0] - 2019-02-02
 ### Added
 - ExpectStringSlice to simplify expecting a slice of strings
