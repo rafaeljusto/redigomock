@@ -13,6 +13,7 @@ import (
 type Response struct {
 	Response interface{} // Response to send back when this command/arguments are called
 	Error    error       // Error to send back when this command/arguments are called
+	Panic    interface{} // Panic to throw when this command/arguments are called
 }
 
 // Cmd stores the registered information about a command to return it later
@@ -75,7 +76,7 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 // Expect calls. Chained responses will be returned on subsequent calls
 // matching this commands arguments in FIFO order
 func (c *Cmd) Expect(response interface{}) *Cmd {
-	c.Responses = append(c.Responses, Response{response, nil})
+	c.Responses = append(c.Responses, Response{response, nil, nil})
 	return c
 }
 
@@ -87,14 +88,21 @@ func (c *Cmd) ExpectMap(response map[string]string) *Cmd {
 		values = append(values, []byte(key))
 		values = append(values, []byte(value))
 	}
-	c.Responses = append(c.Responses, Response{values, nil})
+	c.Responses = append(c.Responses, Response{values, nil, nil})
 	return c
 }
 
 // ExpectError allows you to force an error when executing a
 // command/arguments
 func (c *Cmd) ExpectError(err error) *Cmd {
-	c.Responses = append(c.Responses, Response{nil, err})
+	c.Responses = append(c.Responses, Response{nil, err, nil})
+	return c
+}
+
+// ExpectPanic allows you to force a panic when executing a
+// command/arguments
+func (c *Cmd) ExpectPanic(msg interface{}) *Cmd {
+	c.Responses = append(c.Responses, Response{nil, nil, msg})
 	return c
 }
 
@@ -105,7 +113,7 @@ func (c *Cmd) ExpectSlice(resp ...interface{}) *Cmd {
 	for _, r := range resp {
 		response = append(response, r)
 	}
-	c.Responses = append(c.Responses, Response{response, nil})
+	c.Responses = append(c.Responses, Response{response, nil, nil})
 	return c
 }
 
@@ -116,7 +124,7 @@ func (c *Cmd) ExpectStringSlice(resp ...string) *Cmd {
 	for _, r := range resp {
 		response = append(response, []byte(r))
 	}
-	c.Responses = append(c.Responses, Response{response, nil})
+	c.Responses = append(c.Responses, Response{response, nil, nil})
 	return c
 }
 

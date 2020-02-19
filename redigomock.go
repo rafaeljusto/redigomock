@@ -223,6 +223,11 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 	if len(cmd.Responses) > 1 {
 		cmd.Responses = cmd.Responses[1:]
 	}
+
+	if response.Panic != nil {
+		panic(response.Panic)
+	}
+
 	return response.Response, response.Error
 }
 
