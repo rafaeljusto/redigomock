@@ -98,33 +98,40 @@ mocking a subscription
 ----------------------
 
 ```go
+package main
+
+import "github.com/rafaeljusto/redigomock"
+
 func CreateSubscriptionMessage(data []byte) []interface{} {
-    values := []interface{}{}
-    values = append(values, interface{}([]byte("message")))
-    values = append(values, interface{}([]byte("chanName")))
-    values = append(values, interface{}(data))
-    return values
+	values := []interface{}{}
+	values = append(values, interface{}([]byte("message")))
+	values = append(values, interface{}([]byte("chanName")))
+	values = append(values, interface{}(data))
+	return values
 }
 
-rconnSub := redigomock.NewConn()
+func main() {
+	conn := redigomock.NewConn()
 
-// Setup the initial subscription message
-values := []interface{}{}
-values = append(values, interface{}([]byte("subscribe")))
-values = append(values, interface{}([]byte("chanName")))
-values = append(values, interface{}([]byte("1")))
-cmd := rconnSub.Command("SUBSCRIBE", subKey).Expect(values)
-rconnSub.ReceiveWait = true
+	// Setup the initial subscription message
+	values := []interface{}{}
+	values = append(values, interface{}([]byte("subscribe")))
+	values = append(values, interface{}([]byte("chanName")))
+	values = append(values, interface{}([]byte("1")))
 
-// Add a response that will come back as a subscription message
-rconnSub.AddSubscriptionMessage(CreateSubscriptionMessage([]byte("hello")))
+	conn.Command("SUBSCRIBE", subKey).Expect(values)
+	conn.ReceiveWait = true
 
-//You need to send messages to rconnSub.ReceiveNow in order to get a response.
-//Sending to this channel will block until receive, so do it in a goroutine
-go func() {
-    rconnSub.ReceiveNow <- true //This unlocks the subscribe message
-    rconnSub.ReceiveNow <- true //This sends the "hello" message
-}()
+	// Add a response that will come back as a subscription message
+	conn.AddSubscriptionMessage(CreateSubscriptionMessage([]byte("hello")))
+
+	// You need to send messages to conn.ReceiveNow in order to get a response.
+	// Sending to this channel will block until receive, so do it in a goroutine
+	go func() {
+		conn.ReceiveNow <- true // This unlocks the subscribe message
+		conn.ReceiveNow <- true // This sends the "hello" message
+	}()
+}
 ```
 
 connections pool
@@ -138,5 +145,56 @@ pool := &redis.Pool{
 	// Return the same connection mock for each Get() call.
 	Dial:    func() (redis.Conn, error) { return conn, nil },
 	MaxIdle: 10,
+}
+```
+
+dynamic handling arguments
+--------------------------
+
+Sometimes you need to check the executed arguments in your Redis command. For
+that you can use the command handler.
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/gomodule/redigo/redis"
+	"github.com/rafaeljusto/redigomock"
+)
+
+func Publish(conn redis.Conn, x, y int) error {
+	if x < 0 {
+		x = 0
+	}
+	if y < 0 {
+		y = 0
+	}
+	_, err := conn.Do("PUBLISH", "sumCh", int64(x+y))
+	return err
+}
+
+func main() {
+	conn := redigomock.NewConn()
+	conn.GenericCommand("PUBLISH").Handle(redigomock.ResponseHandler(func(args []interface{}) (interface{}, error) {{
+		if len(args) != 2 {
+			return nil, fmt.Errorf("unexpected number of arguments: %d", len(args))
+		}
+		v, ok := args[1].(int64)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type %T", args[1])
+		}
+		if v < 0 {
+			return nil, fmt.Errorf("unexpected value '%d'", v)
+		}
+		return int64(1), nil
+	})
+
+	if err := Publish(conn, -1, 10); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Success!")
 }
 ```
