@@ -228,6 +228,9 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 		panic(response.Panic)
 	}
 
+	if handler, ok := response.Response.(ResponseHandler); ok {
+		return handler(args)
+	}
 	return response.Response, response.Error
 }
 

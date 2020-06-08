@@ -783,3 +783,28 @@ func TestAllCommandsCalled(t *testing.T) {
 		t.Fatal("Should have error due to DEL is unexpected")
 	}
 }
+
+func TestDoCommandWithHandler(t *testing.T) {
+	connection := NewConn()
+	connection.GenericCommand("PUBLISH").Handle(ResponseHandler(func(args []interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("unexpected number of arguments: %d", len(args))
+		}
+		v, ok := args[1].(string)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type %T", args[1])
+		}
+		if v != "stuff" {
+			return nil, fmt.Errorf("unexpected value '%s'", v)
+		}
+		return int64(1), nil
+	}))
+
+	clients, err := redis.Int64(connection.Do("PUBLISH", "ch", "stuff"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if clients != 1 {
+		t.Errorf("unexpected number of notified clients '%d'", clients)
+	}
+}

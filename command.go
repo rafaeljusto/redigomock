@@ -16,6 +16,9 @@ type Response struct {
 	Panic    interface{} // Panic to throw when this command/arguments are called
 }
 
+// ResponseHandler dynamic handles the response for the provided arguments.
+type ResponseHandler func(args []interface{}) (interface{}, error)
+
 // Cmd stores the registered information about a command to return it later
 // when request by a command execution
 type Cmd struct {
@@ -125,6 +128,13 @@ func (c *Cmd) ExpectStringSlice(resp ...string) *Cmd {
 		response = append(response, []byte(r))
 	}
 	c.Responses = append(c.Responses, Response{response, nil, nil})
+	return c
+}
+
+// Handle registers a function to handle the incoming arguments, generating an
+// on-the-fly response.
+func (c *Cmd) Handle(fn ResponseHandler) *Cmd {
+	c.Responses = append(c.Responses, Response{fn, nil, nil})
 	return c
 }
 
