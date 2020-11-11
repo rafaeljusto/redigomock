@@ -784,6 +784,29 @@ func TestAllCommandsCalled(t *testing.T) {
 	}
 }
 
+func TestDoRace(t *testing.T) {
+	connection := NewConn()
+	n := 100
+
+	connection.Command("GET", "hello").Expect("world")
+
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			connection.Do("GET", "hello")
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	err := connection.ExpectationsWereMet()
+	if err != nil {
+		t.Error("Called was not correctly set")
+	}
+}
+
 func TestDoCommandWithHandler(t *testing.T) {
 	connection := NewConn()
 	connection.GenericCommand("PUBLISH").Handle(ResponseHandler(func(args []interface{}) (interface{}, error) {

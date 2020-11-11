@@ -214,7 +214,7 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 	c.stats[cmd.hash()]++
 	c.statsMut.Unlock()
 
-	cmd.Called = true
+	cmd.calledOnce.Do(func() { cmd.Called = true })
 	if len(cmd.Responses) == 0 {
 		return nil, nil
 	}

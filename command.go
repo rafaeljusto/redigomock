@@ -7,6 +7,7 @@ package redigomock
 import (
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 // Response struct that represents single response from `Do` call
@@ -22,10 +23,11 @@ type ResponseHandler func(args []interface{}) (interface{}, error)
 // Cmd stores the registered information about a command to return it later
 // when request by a command execution
 type Cmd struct {
-	Name      string        // Name of the command
-	Args      []interface{} // Arguments of the command
-	Responses []Response    // Slice of returned responses
-	Called    bool          // State for this command called or not
+	Name       string        // Name of the command
+	Args       []interface{} // Arguments of the command
+	Responses  []Response    // Slice of returned responses
+	Called     bool          // State for this command called or not
+	calledOnce sync.Once     // used to initialize Called
 }
 
 // cmdHash stores a unique identifier of the command
@@ -68,7 +70,6 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 		} else if reflect.DeepEqual(cmd.Args[pos], args[pos]) == false {
 			return false
 		}
-
 	}
 	return true
 }
@@ -139,7 +140,7 @@ func (c *Cmd) Handle(fn ResponseHandler) *Cmd {
 }
 
 // hash generates a unique identifier for the command
-func (c Cmd) hash() cmdHash {
+func (c *Cmd) hash() cmdHash {
 	output := c.Name
 	for _, arg := range c.Args {
 		output += fmt.Sprintf("%v", arg)
