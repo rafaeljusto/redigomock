@@ -7,7 +7,7 @@ install:
   - go get github.com/gomodule/redigo/redis
 
 script:
-  - go test
+  - go test -race
 
 notifications:
   email:

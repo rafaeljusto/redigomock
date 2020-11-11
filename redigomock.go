@@ -38,6 +38,7 @@ type Conn struct {
 	stats              map[cmdHash]int // Command calls counter
 	statsMut           sync.RWMutex    // Locks the stats so we don't get concurrent map writes
 	Errors             []error         // Storage of all error occured in do functions
+	errorsMut          sync.RWMutex    // Locks Errors to avoid concurrent slice appends
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -205,7 +206,9 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 
 			err := fmt.Errorf("command %s with arguments %#v not registered in redigomock library%s",
 				commandName, args, msg)
+			c.errorsMut.Lock()
 			c.Errors = append(c.Errors, err)
+			c.errorsMut.Unlock()
 			return nil, err
 		}
 	}
