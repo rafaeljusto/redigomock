@@ -199,7 +199,7 @@
 // any integer passed to redigomock from the tested method. Please see
 // fuzzyMatch.go file for more details.
 //
-// The interface of Conn which matches redigo.Conn is safe for concurrent use,
-// but the mock-only methods and fields, like Command and Errors, should not be
-// accessed concurrently with such calls.
+// The method Conn.Do is safe for concurrent use, but other methods and fields,
+// such as Command and Errors, are generally not and must only be accessed with
+// external synchronization.
 package redigomock
