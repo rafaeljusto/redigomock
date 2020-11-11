@@ -39,8 +39,8 @@ type Conn struct {
 	replies            []replyElement  // Slice that stores all queued replies
 	subResponses       []response      // Queue responses for PubSub
 	stats              map[cmdHash]int // Command calls counter
-	statsMut           sync.RWMutex    // Locks the stats so we don't get concurrent map writes
 	errors             []error         // Storage of all error occured in do functions
+	mu                 sync.RWMutex    // Hold while accessing any mutable fields
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -78,6 +78,10 @@ func (c *Conn) Command(commandName string, args ...interface{}) *Cmd {
 		name: commandName,
 		args: args,
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.removeRelatedCommands(commandName, args)
 	c.commands = append(c.commands, cmd)
 	return cmd
@@ -107,6 +111,9 @@ func (c *Conn) GenericCommand(commandName string) *Cmd {
 		name: commandName,
 	}
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.removeRelatedCommands(commandName, nil)
 	c.commands = append(c.commands, cmd)
 	return cmd
@@ -114,6 +121,8 @@ func (c *Conn) GenericCommand(commandName string) *Cmd {
 
 // find will scan the registered commands, looking for the first command with
 // the same name and arguments. If the command is not found nil is returned
+//
+// Caller must hold c.mu.
 func (c *Conn) find(commandName string, args []interface{}) *Cmd {
 	for _, cmd := range c.commands {
 		if match(commandName, args, cmd) {
@@ -125,7 +134,9 @@ func (c *Conn) find(commandName string, args []interface{}) *Cmd {
 
 // removeRelatedCommands verify if a command is already registered, removing
 // any command already registered with the same name and arguments. This
-// should avoid duplicated mocked commands
+// should avoid duplicated mocked commands.
+//
+// Caller must hold c.mu.
 func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
 	var unique []*Cmd
 
@@ -142,8 +153,8 @@ func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
 // Clear removes all registered commands. Useful for connection reuse in test
 // scenarios
 func (c *Conn) Clear() {
-	c.statsMut.Lock()
-	defer c.statsMut.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.commands = []*Cmd{}
 	c.queue = []queueElement{}
@@ -156,8 +167,11 @@ func (c *Conn) Clear() {
 // response or error is returned. If no registered command is found an error
 // is returned
 func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if commandName == "" {
-		if err := c.Flush(); err != nil {
+		if err := c.flush(); err != nil {
 			return nil, err
 		}
 
@@ -177,7 +191,7 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	}
 
 	if len(c.queue) != 0 || len(c.replies) != 0 {
-		if err := c.Flush(); err != nil {
+		if err := c.flush(); err != nil {
 			return nil, err
 		}
 		for _, v := range c.replies {
@@ -191,6 +205,7 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	return c.do(commandName, args...)
 }
 
+// Caller must hold c.mu.
 func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, err error) {
 	cmd := c.find(commandName, args)
 	if cmd == nil {
@@ -213,9 +228,7 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 		}
 	}
 
-	c.statsMut.Lock()
 	c.stats[cmd.hash()]++
-	c.statsMut.Unlock()
 
 	response := cmd.getResponse()
 	if response == nil {
@@ -241,6 +254,9 @@ func (c *Conn) DoWithTimeout(readTimeout time.Duration, cmd string, args ...inte
 // Send stores the command and arguments to be executed later (by the Receive
 // function) in a first-come first-served order
 func (c *Conn) Send(commandName string, args ...interface{}) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.queue = append(c.queue, queueElement{
 		commandName: commandName,
 		args:        args,
@@ -250,6 +266,14 @@ func (c *Conn) Send(commandName string, args ...interface{}) error {
 
 // Flush can be mocked using the Conn struct attributes
 func (c *Conn) Flush() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.flush()
+}
+
+// Caller must hold c.mu.
+func (c *Conn) flush() error {
 	if c.FlushMock != nil {
 		return c.FlushMock()
 	}
@@ -275,6 +299,10 @@ func (c *Conn) Flush() error {
 func (c *Conn) AddSubscriptionMessage(msg interface{}) {
 	resp := response{}
 	resp.response = msg
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.subResponses = append(c.subResponses, resp)
 }
 
@@ -285,6 +313,9 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		<-c.ReceiveNow
 	}
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if len(c.queue) == 0 && len(c.replies) == 0 {
 		if len(c.subResponses) > 0 {
 			reply, err = c.subResponses[0].response, c.subResponses[0].err
@@ -294,7 +325,7 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		return nil, fmt.Errorf("no more items")
 	}
 
-	if err := c.Flush(); err != nil {
+	if err := c.flush(); err != nil {
 		return nil, err
 	}
 
@@ -312,8 +343,8 @@ func (c *Conn) ReceiveWithTimeout(timeout time.Duration) (interface{}, error) {
 // Stats returns the number of times that a command was called in the current
 // connection
 func (c *Conn) Stats(cmd *Cmd) int {
-	c.statsMut.RLock()
-	defer c.statsMut.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	return c.stats[cmd.hash()]
 }
@@ -321,6 +352,9 @@ func (c *Conn) Stats(cmd *Cmd) int {
 // ExpectationsWereMet can guarantee that all commands that was set on unit tests
 // called or call of unregistered command can be caught here too
 func (c *Conn) ExpectationsWereMet() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	errMsg := ""
 	for _, err := range c.errors {
 		errMsg = fmt.Sprintf("%s%s\n", errMsg, err.Error())
@@ -342,6 +376,9 @@ func (c *Conn) ExpectationsWereMet() error {
 // Errors returns any errors that this connection returned in lieu of a valid
 // mock.
 func (c *Conn) Errors() []error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	// Return a copy of c.errors, in case caller wants to mutate it
 	ret := make([]error, len(c.errors))
 	copy(ret, c.errors)

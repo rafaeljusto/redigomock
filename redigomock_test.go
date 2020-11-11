@@ -831,3 +831,23 @@ func TestDoCommandWithHandler(t *testing.T) {
 		t.Errorf("unexpected number of notified clients '%d'", clients)
 	}
 }
+
+func TestErrorRace(t *testing.T) {
+	connection := NewConn()
+	n := 100
+
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			connection.Do("GET", "hello")
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	if len(connection.Errors()) != n {
+		t.Errorf("wanted %v errors, got %v", n, len(connection.Errors()))
+	}
+}

@@ -198,4 +198,8 @@
 // match AnyInt struct created by NewAnyInt() method. AnyInt struct will match
 // any integer passed to redigomock from the tested method. Please see
 // fuzzyMatch.go file for more details.
+//
+// The interface of Conn which matches redigo.Conn is safe for concurrent use,
+// but the mock-only methods and fields, like Command and Errors, should not be
+// accessed concurrently with such calls.
 package redigomock
