@@ -217,14 +217,9 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 	c.stats[cmd.hash()]++
 	c.statsMut.Unlock()
 
-	cmd.called = true
-	if len(cmd.responses) == 0 {
+	response := cmd.getResponse()
+	if response == nil {
 		return nil, nil
-	}
-
-	response := cmd.responses[0]
-	if len(cmd.responses) > 1 {
-		cmd.responses = cmd.responses[1:]
 	}
 
 	if response.panicVal != nil {
@@ -332,7 +327,7 @@ func (c *Conn) ExpectationsWereMet() error {
 	}
 
 	for _, cmd := range c.commands {
-		if !cmd.called {
+		if !cmd.Called() {
 			errMsg = fmt.Sprintf("%sCommand %s with arguments %#v expected but never called.\n", errMsg, cmd.name, cmd.args)
 		}
 	}

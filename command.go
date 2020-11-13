@@ -7,6 +7,7 @@ package redigomock
 import (
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 // response struct that represents single response from `Do` call.
@@ -22,10 +23,12 @@ type ResponseHandler func(args []interface{}) (interface{}, error)
 // Cmd stores the registered information about a command to return it later
 // when request by a command execution
 type Cmd struct {
+	// name and args must not be mutated after creation.
 	name      string        // Name of the command
 	args      []interface{} // Arguments of the command
 	responses []response    // Slice of returned responses
 	called    bool          // State for this command called or not
+	mu        sync.Mutex    // hold while accessing responses and called
 }
 
 // cmdHash stores a unique identifier of the command
@@ -78,8 +81,15 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 // Expect calls. Chained responses will be returned on subsequent calls
 // matching this commands arguments in FIFO order
 func (c *Cmd) Expect(resp interface{}) *Cmd {
-	c.responses = append(c.responses, response{resp, nil, nil})
+	c.expect(response{resp, nil, nil})
 	return c
+}
+
+// expect appends the argument to the response-slice, holding the lock
+func (c *Cmd) expect(resp response) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.responses = append(c.responses, resp)
 }
 
 // ExpectMap works in the same way of the Expect command, but has a key/value
@@ -90,21 +100,21 @@ func (c *Cmd) ExpectMap(resp map[string]string) *Cmd {
 		values = append(values, []byte(key))
 		values = append(values, []byte(value))
 	}
-	c.responses = append(c.responses, response{values, nil, nil})
+	c.expect(response{values, nil, nil})
 	return c
 }
 
 // ExpectError allows you to force an error when executing a
 // command/arguments
 func (c *Cmd) ExpectError(err error) *Cmd {
-	c.responses = append(c.responses, response{nil, err, nil})
+	c.expect(response{nil, err, nil})
 	return c
 }
 
 // ExpectPanic allows you to force a panic when executing a
 // command/arguments
 func (c *Cmd) ExpectPanic(msg interface{}) *Cmd {
-	c.responses = append(c.responses, response{nil, nil, msg})
+	c.expect(response{nil, nil, msg})
 	return c
 }
 
@@ -115,7 +125,7 @@ func (c *Cmd) ExpectSlice(resp ...interface{}) *Cmd {
 	for _, r := range resp {
 		ifaces = append(ifaces, r)
 	}
-	c.responses = append(c.responses, response{ifaces, nil, nil})
+	c.expect(response{ifaces, nil, nil})
 	return c
 }
 
@@ -126,19 +136,19 @@ func (c *Cmd) ExpectStringSlice(resp ...string) *Cmd {
 	for _, r := range resp {
 		ifaces = append(ifaces, []byte(r))
 	}
-	c.responses = append(c.responses, response{ifaces, nil, nil})
+	c.expect(response{ifaces, nil, nil})
 	return c
 }
 
 // Handle registers a function to handle the incoming arguments, generating an
 // on-the-fly response.
 func (c *Cmd) Handle(fn ResponseHandler) *Cmd {
-	c.responses = append(c.responses, response{fn, nil, nil})
+	c.expect(response{fn, nil, nil})
 	return c
 }
 
 // hash generates a unique identifier for the command
-func (c Cmd) hash() cmdHash {
+func (c *Cmd) hash() cmdHash {
 	output := c.name
 	for _, arg := range c.args {
 		output += fmt.Sprintf("%v", arg)
@@ -148,5 +158,25 @@ func (c Cmd) hash() cmdHash {
 
 // Called returns true if the command-mock was ever called.
 func (c *Cmd) Called() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	return c.called
+}
+
+// getResponse marks the command as used, and gets the next response to return.
+func (c *Cmd) getResponse() *response {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.called = true
+	if len(c.responses) == 0 {
+		return nil
+	}
+
+	resp := c.responses[0]
+	if len(c.responses) > 1 {
+		c.responses = c.responses[1:]
+	}
+	return &resp
 }

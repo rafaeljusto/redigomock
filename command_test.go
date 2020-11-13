@@ -8,6 +8,8 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
+	"sync"
 	"testing"
 
 	"github.com/gomodule/redigo/redis"
@@ -488,6 +490,57 @@ func TestHash(t *testing.T) {
 	for i, item := range data {
 		if hash := item.cmd.hash(); hash != item.expected {
 			t.Errorf("Expected “%s” and got “%s” for data item “%d”", item.expected, hash, i)
+		}
+	}
+}
+
+func TestRace(t *testing.T) {
+	funcs := []func(*Cmd){
+		func(c *Cmd) { _ = equal("GET", []interface{}{[]byte("hello")}, c) },
+		func(c *Cmd) { _ = match("GET", []interface{}{[]byte("hello")}, c) },
+		func(c *Cmd) { _ = c.hash() },
+		func(c *Cmd) { _ = c.Called() },
+		func(c *Cmd) { _ = c.getResponse() },
+		func(c *Cmd) { c.Expect([]byte("OK")) },
+		func(c *Cmd) { c.ExpectMap(map[string]string{"hello": "world"}) },
+		func(c *Cmd) { c.ExpectError(fmt.Errorf("oh no")) },
+		func(c *Cmd) { c.ExpectPanic(fmt.Errorf("oh no")) },
+		func(c *Cmd) { c.ExpectSlice([]byte("hello"), []byte("world")) },
+		func(c *Cmd) { c.ExpectStringSlice("hello", "world") },
+		func(c *Cmd) { c.Handle(func(args []interface{}) (interface{}, error) { return nil, nil }) },
+	}
+
+	// include two copies of each function, in case a function races with
+	// itself
+	funcs = append(funcs, funcs...)
+
+	// run the test several times, with shuffled order, to make sure it's not
+	// too order-dependent
+	rand := rand.New(rand.NewSource(0))
+	for i := 0; i < 10; i++ {
+		rand.Shuffle(len(funcs), func(i, j int) { funcs[i], funcs[j] = funcs[j], funcs[i] })
+
+		cmd := Cmd{name: "GET", args: []interface{}{[]byte("hello")}}
+
+		var wg sync.WaitGroup
+		wg.Add(len(funcs))
+		for _, f := range funcs {
+			f := f
+			go func() {
+				f(&cmd)
+				wg.Done()
+			}()
+		}
+
+		wg.Wait()
+
+		// we should have 12 to 14 responses, depending on how many of the
+		// getResponse calls ran before at least two Expects, since getResponse
+		// pops a response only if there are at least two responses
+
+		l := len(cmd.responses)
+		if l < 12 || l > 14 {
+			t.Errorf("wanted 12-14 responses, got %v: %v", l, cmd.responses)
 		}
 	}
 }
