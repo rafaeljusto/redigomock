@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.0.0] - 2020-11-16
+### Fix
+- Refactoring to solve race conditions
+
 ## [2.4.0] - 2020-06-08
 ### Added
 - Dynamic handle Redis arguments with the command handle feature

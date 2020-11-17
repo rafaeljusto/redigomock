@@ -10,7 +10,7 @@ install
 -------
 
 ```
-go get -u github.com/rafaeljusto/redigomock
+go get -u github.com/rafaeljusto/redigomock/v3
 ```
 
 usage
@@ -24,7 +24,7 @@ package main
 import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
-	"github.com/rafaeljusto/redigomock"
+	"github.com/rafaeljusto/redigomock/v3"
 )
 
 type Person struct {
@@ -100,7 +100,7 @@ mocking a subscription
 ```go
 package main
 
-import "github.com/rafaeljusto/redigomock"
+import "github.com/rafaeljusto/redigomock/v3"
 
 func CreateSubscriptionMessage(data []byte) []interface{} {
 	values := []interface{}{}
@@ -160,7 +160,7 @@ package main
 import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
-	"github.com/rafaeljusto/redigomock"
+	"github.com/rafaeljusto/redigomock/v3"
 )
 
 func Publish(conn redis.Conn, x, y int) error {

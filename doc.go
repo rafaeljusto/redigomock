@@ -78,7 +78,7 @@
 //  package person
 //
 //  import (
-//    "github.com/rafaeljusto/redigomock"
+//    "github.com/rafaeljusto/redigomock/v3"
 //    "testing"
 //  )
 //
