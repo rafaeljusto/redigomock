@@ -19,13 +19,13 @@ func TestFuzzyCommandMatchAnyInt(t *testing.T) {
 		{[]interface{}{"ANOTHER_COMMAND", "Test string", 1}, false},
 	}
 
-	command := Cmd{
+	command := &Cmd{
 		name: "TEST_COMMAND",
 		args: []interface{}{"Test string", NewAnyInt()},
 	}
 
 	for pos, element := range fuzzyCommandTestInput {
-		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
+		if retVal := match(element.arguments[0].(string), element.arguments[1:], command); retVal != element.match {
 			t.Fatalf("comparing fuzzy comand failed. Comparison between comand [%#v] and test arguments : [%#v] at position %v returned %v while it should have returned %v",
 				command, element.arguments, pos, retVal, element.match)
 		}
@@ -49,13 +49,13 @@ func TestFuzzyCommandMatchAnyDouble(t *testing.T) {
 		{[]interface{}{"ANOTHER_COMMAND", "Test string", 1.123}, false},
 	}
 
-	command := Cmd{
+	command := &Cmd{
 		name: "TEST_COMMAND",
 		args: []interface{}{"Test string", NewAnyDouble()},
 	}
 
 	for pos, element := range fuzzyCommandTestInput {
-		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
+		if retVal := match(element.arguments[0].(string), element.arguments[1:], command); retVal != element.match {
 			t.Errorf("comparing fuzzy comand failed. Comparison between comand [%+v] and test arguments : [%v] at position %v returned %v while it should have returned %v",
 				command, element.arguments, pos, retVal, element.match)
 		}
@@ -74,13 +74,13 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 		{[]interface{}{"TEST_COMMAND", "Test string", "Another string", 11.22}, false},
 	}
 
-	command := Cmd{
+	command := &Cmd{
 		name: "TEST_COMMAND",
 		args: []interface{}{"Test string", NewAnyData()},
 	}
 
 	for pos, element := range fuzzyCommandTestInput {
-		if retVal := match(element.arguments[0].(string), element.arguments[1:], &command); retVal != element.match {
+		if retVal := match(element.arguments[0].(string), element.arguments[1:], command); retVal != element.match {
 			t.Errorf("comparing fuzzy comand failed. Comparison between comand [%+v] and test arguments : [%v] at position %v returned %v while it should have returned %v",
 				command, element.arguments, pos, retVal, element.match)
 		}
