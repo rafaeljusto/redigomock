@@ -23,9 +23,11 @@ type replyElement struct {
 }
 
 // Conn is the struct that can be used where you inject the redigo.Conn on
-// your project
+// your project.
+//
+// The fields of Conn should not be modified after first use.  (Sending to
+// ReceiveNow is safe.)
 type Conn struct {
-	SubResponses       []Response      // Queue responses for PubSub
 	ReceiveWait        bool            // When set to true, Receive method will wait for a value in ReceiveNow channel to proceed, this is useful in a PubSub scenario
 	ReceiveNow         chan bool       // Used to lock Receive method to simulate a PubSub scenario
 	CloseMock          func() error    // Mock the redigo Close method
@@ -35,9 +37,10 @@ type Conn struct {
 	commands           []*Cmd          // Slice that stores all registered commands for each connection
 	queue              []queueElement  // Slice that stores all queued commands for each connection
 	replies            []replyElement  // Slice that stores all queued replies
+	subResponses       []response      // Queue responses for PubSub
 	stats              map[cmdHash]int // Command calls counter
-	statsMut           sync.RWMutex    // Locks the stats so we don't get concurrent map writes
-	Errors             []error         // Storage of all error occured in do functions
+	errors             []error         // Storage of all error occured in do functions
+	mu                 sync.RWMutex    // Hold while accessing any mutable fields
 }
 
 // NewConn returns a new mocked connection. Obviously as we are mocking we
@@ -72,9 +75,13 @@ func (c *Conn) Err() error {
 // you can set the response or error
 func (c *Conn) Command(commandName string, args ...interface{}) *Cmd {
 	cmd := &Cmd{
-		Name: commandName,
-		Args: args,
+		name: commandName,
+		args: args,
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.removeRelatedCommands(commandName, args)
 	c.commands = append(c.commands, cmd)
 	return cmd
@@ -101,8 +108,11 @@ func (c *Conn) Script(scriptData []byte, keyCount int, args ...interface{}) *Cmd
 // generic commands before throwing an error
 func (c *Conn) GenericCommand(commandName string) *Cmd {
 	cmd := &Cmd{
-		Name: commandName,
+		name: commandName,
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.removeRelatedCommands(commandName, nil)
 	c.commands = append(c.commands, cmd)
@@ -111,6 +121,8 @@ func (c *Conn) GenericCommand(commandName string) *Cmd {
 
 // find will scan the registered commands, looking for the first command with
 // the same name and arguments. If the command is not found nil is returned
+//
+// Caller must hold c.mu.
 func (c *Conn) find(commandName string, args []interface{}) *Cmd {
 	for _, cmd := range c.commands {
 		if match(commandName, args, cmd) {
@@ -122,7 +134,9 @@ func (c *Conn) find(commandName string, args []interface{}) *Cmd {
 
 // removeRelatedCommands verify if a command is already registered, removing
 // any command already registered with the same name and arguments. This
-// should avoid duplicated mocked commands
+// should avoid duplicated mocked commands.
+//
+// Caller must hold c.mu.
 func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
 	var unique []*Cmd
 
@@ -139,8 +153,8 @@ func (c *Conn) removeRelatedCommands(commandName string, args []interface{}) {
 // Clear removes all registered commands. Useful for connection reuse in test
 // scenarios
 func (c *Conn) Clear() {
-	c.statsMut.Lock()
-	defer c.statsMut.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.commands = []*Cmd{}
 	c.queue = []queueElement{}
@@ -153,8 +167,11 @@ func (c *Conn) Clear() {
 // response or error is returned. If no registered command is found an error
 // is returned
 func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if commandName == "" {
-		if err := c.Flush(); err != nil {
+		if err := c.flush(); err != nil {
 			return nil, err
 		}
 
@@ -174,7 +191,7 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	}
 
 	if len(c.queue) != 0 || len(c.replies) != 0 {
-		if err := c.Flush(); err != nil {
+		if err := c.flush(); err != nil {
 			return nil, err
 		}
 		for _, v := range c.replies {
@@ -188,6 +205,7 @@ func (c *Conn) Do(commandName string, args ...interface{}) (reply interface{}, e
 	return c.do(commandName, args...)
 }
 
+// Caller must hold c.mu.
 func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, err error) {
 	cmd := c.find(commandName, args)
 	if cmd == nil {
@@ -195,43 +213,36 @@ func (c *Conn) do(commandName string, args ...interface{}) (reply interface{}, e
 		if cmd = c.find(commandName, nil); cmd == nil {
 			var msg string
 			for _, regCmd := range c.commands {
-				if commandName == regCmd.Name {
+				if commandName == regCmd.name {
 					if len(msg) == 0 {
 						msg = ". Possible matches are with the arguments:"
 					}
-					msg += fmt.Sprintf("\n* %#v", regCmd.Args)
+					msg += fmt.Sprintf("\n* %#v", regCmd.args)
 				}
 			}
 
 			err := fmt.Errorf("command %s with arguments %#v not registered in redigomock library%s",
 				commandName, args, msg)
-			c.Errors = append(c.Errors, err)
+			c.errors = append(c.errors, err)
 			return nil, err
 		}
 	}
 
-	c.statsMut.Lock()
 	c.stats[cmd.hash()]++
-	c.statsMut.Unlock()
 
-	cmd.Called = true
-	if len(cmd.Responses) == 0 {
+	response := cmd.getResponse()
+	if response == nil {
 		return nil, nil
 	}
 
-	response := cmd.Responses[0]
-	if len(cmd.Responses) > 1 {
-		cmd.Responses = cmd.Responses[1:]
+	if response.panicVal != nil {
+		panic(response.panicVal)
 	}
 
-	if response.Panic != nil {
-		panic(response.Panic)
-	}
-
-	if handler, ok := response.Response.(ResponseHandler); ok {
+	if handler, ok := response.response.(ResponseHandler); ok {
 		return handler(args)
 	}
-	return response.Response, response.Error
+	return response.response, response.err
 }
 
 // DoWithTimeout is a helper function for Do call to satisfy the ConnWithTimeout
@@ -243,6 +254,9 @@ func (c *Conn) DoWithTimeout(readTimeout time.Duration, cmd string, args ...inte
 // Send stores the command and arguments to be executed later (by the Receive
 // function) in a first-come first-served order
 func (c *Conn) Send(commandName string, args ...interface{}) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.queue = append(c.queue, queueElement{
 		commandName: commandName,
 		args:        args,
@@ -252,6 +266,14 @@ func (c *Conn) Send(commandName string, args ...interface{}) error {
 
 // Flush can be mocked using the Conn struct attributes
 func (c *Conn) Flush() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.flush()
+}
+
+// Caller must hold c.mu.
+func (c *Conn) flush() error {
 	if c.FlushMock != nil {
 		return c.FlushMock()
 	}
@@ -275,9 +297,13 @@ func (c *Conn) Flush() error {
 // AddSubscriptionMessage register a response to be returned by the receive
 // call.
 func (c *Conn) AddSubscriptionMessage(msg interface{}) {
-	resp := Response{}
-	resp.Response = msg
-	c.SubResponses = append(c.SubResponses, resp)
+	resp := response{}
+	resp.response = msg
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.subResponses = append(c.subResponses, resp)
 }
 
 // Receive will process the queue created by the Send method, only one item
@@ -287,16 +313,19 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 		<-c.ReceiveNow
 	}
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if len(c.queue) == 0 && len(c.replies) == 0 {
-		if len(c.SubResponses) > 0 {
-			reply, err = c.SubResponses[0].Response, c.SubResponses[0].Error
-			c.SubResponses = c.SubResponses[1:]
+		if len(c.subResponses) > 0 {
+			reply, err = c.subResponses[0].response, c.subResponses[0].err
+			c.subResponses = c.subResponses[1:]
 			return
 		}
 		return nil, fmt.Errorf("no more items")
 	}
 
-	if err := c.Flush(); err != nil {
+	if err := c.flush(); err != nil {
 		return nil, err
 	}
 
@@ -314,8 +343,8 @@ func (c *Conn) ReceiveWithTimeout(timeout time.Duration) (interface{}, error) {
 // Stats returns the number of times that a command was called in the current
 // connection
 func (c *Conn) Stats(cmd *Cmd) int {
-	c.statsMut.RLock()
-	defer c.statsMut.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	return c.stats[cmd.hash()]
 }
@@ -323,14 +352,17 @@ func (c *Conn) Stats(cmd *Cmd) int {
 // ExpectationsWereMet can guarantee that all commands that was set on unit tests
 // called or call of unregistered command can be caught here too
 func (c *Conn) ExpectationsWereMet() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	errMsg := ""
-	for _, err := range c.Errors {
+	for _, err := range c.errors {
 		errMsg = fmt.Sprintf("%s%s\n", errMsg, err.Error())
 	}
 
 	for _, cmd := range c.commands {
-		if !cmd.Called {
-			errMsg = fmt.Sprintf("%sCommand %s with arguments %#v expected but never called.\n", errMsg, cmd.Name, cmd.Args)
+		if !cmd.Called() {
+			errMsg = fmt.Sprintf("%sCommand %s with arguments %#v expected but never called.\n", errMsg, cmd.name, cmd.args)
 		}
 	}
 
@@ -339,4 +371,16 @@ func (c *Conn) ExpectationsWereMet() error {
 	}
 
 	return nil
+}
+
+// Errors returns any errors that this connection returned in lieu of a valid
+// mock.
+func (c *Conn) Errors() []error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Return a copy of c.errors, in case caller wants to mutate it
+	ret := make([]error, len(c.errors))
+	copy(ret, c.errors)
+	return ret
 }

@@ -3,7 +3,7 @@ package redigomock
 import "testing"
 
 func TestFuzzyCommandMatchAnyInt(t *testing.T) {
-	var fuzzyCommandTestInput = []struct {
+	fuzzyCommandTestInput := []struct {
 		arguments []interface{}
 		match     bool
 	}{
@@ -20,8 +20,8 @@ func TestFuzzyCommandMatchAnyInt(t *testing.T) {
 	}
 
 	command := Cmd{
-		Name: "TEST_COMMAND",
-		Args: []interface{}{"Test string", NewAnyInt()},
+		name: "TEST_COMMAND",
+		args: []interface{}{"Test string", NewAnyInt()},
 	}
 
 	for pos, element := range fuzzyCommandTestInput {
@@ -33,7 +33,7 @@ func TestFuzzyCommandMatchAnyInt(t *testing.T) {
 }
 
 func TestFuzzyCommandMatchAnyDouble(t *testing.T) {
-	var fuzzyCommandTestInput = []struct {
+	fuzzyCommandTestInput := []struct {
 		arguments []interface{}
 		match     bool
 	}{
@@ -50,8 +50,8 @@ func TestFuzzyCommandMatchAnyDouble(t *testing.T) {
 	}
 
 	command := Cmd{
-		Name: "TEST_COMMAND",
-		Args: []interface{}{"Test string", NewAnyDouble()},
+		name: "TEST_COMMAND",
+		args: []interface{}{"Test string", NewAnyDouble()},
 	}
 
 	for pos, element := range fuzzyCommandTestInput {
@@ -63,7 +63,7 @@ func TestFuzzyCommandMatchAnyDouble(t *testing.T) {
 }
 
 func TestFuzzyCommandMatchAnyData(t *testing.T) {
-	var fuzzyCommandTestInput = []struct {
+	fuzzyCommandTestInput := []struct {
 		arguments []interface{}
 		match     bool
 	}{
@@ -75,8 +75,8 @@ func TestFuzzyCommandMatchAnyData(t *testing.T) {
 	}
 
 	command := Cmd{
-		Name: "TEST_COMMAND",
-		Args: []interface{}{"Test string", NewAnyData()},
+		name: "TEST_COMMAND",
+		args: []interface{}{"Test string", NewAnyData()},
 	}
 
 	for pos, element := range fuzzyCommandTestInput {

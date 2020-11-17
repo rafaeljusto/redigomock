@@ -10,8 +10,10 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-var _ redis.Conn = &Conn{}
-var _ redis.ConnWithTimeout = &Conn{}
+var (
+	_ redis.Conn            = &Conn{}
+	_ redis.ConnWithTimeout = &Conn{}
+)
 
 type Person struct {
 	Name string `redis:"name"`
@@ -78,7 +80,6 @@ func TestDoCommand(t *testing.T) {
 }
 
 func TestPanickyDoCommand(t *testing.T) {
-
 	panicMsg := "panic-message"
 
 	defer func() {
@@ -327,7 +328,6 @@ func TestDoEmptyFlushPipeline(t *testing.T) {
 			t.Errorf("Didn't receive expected: %s != %s", cmds[i].val, val)
 		}
 	}
-
 }
 
 func TestSendFlushReceive(t *testing.T) {
@@ -466,8 +466,8 @@ func TestPubSub(t *testing.T) {
 		})
 	}
 
-	if len(conn.SubResponses) != 4 {
-		t.Errorf("unexpected number of sub-responses, expected '%d', got '%d'", 4, len(conn.SubResponses))
+	if len(conn.subResponses) != 4 {
+		t.Errorf("unexpected number of sub-responses, expected '%d', got '%d'", 4, len(conn.subResponses))
 	}
 
 	// function to trigger a new pub/sub message received from the redis server
@@ -784,6 +784,29 @@ func TestAllCommandsCalled(t *testing.T) {
 	}
 }
 
+func TestDoRace(t *testing.T) {
+	connection := NewConn()
+	n := 100
+
+	connection.Command("GET", "hello").Expect("world")
+
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			connection.Do("GET", "hello")
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	err := connection.ExpectationsWereMet()
+	if err != nil {
+		t.Error("Called was not correctly set")
+	}
+}
+
 func TestDoCommandWithHandler(t *testing.T) {
 	connection := NewConn()
 	connection.GenericCommand("PUBLISH").Handle(ResponseHandler(func(args []interface{}) (interface{}, error) {
@@ -806,5 +829,25 @@ func TestDoCommandWithHandler(t *testing.T) {
 	}
 	if clients != 1 {
 		t.Errorf("unexpected number of notified clients '%d'", clients)
+	}
+}
+
+func TestErrorRace(t *testing.T) {
+	connection := NewConn()
+	n := 100
+
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			connection.Do("GET", "hello")
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	if len(connection.Errors()) != n {
+		t.Errorf("wanted %v errors, got %v", n, len(connection.Errors()))
 	}
 }
