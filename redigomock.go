@@ -5,6 +5,7 @@
 package redigomock
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
@@ -251,6 +252,12 @@ func (c *Conn) DoWithTimeout(readTimeout time.Duration, cmd string, args ...inte
 	return c.Do(cmd, args...)
 }
 
+// DoContext is a helper function for Do call to satisfy the ConnWithContext
+// interface.
+func (c *Conn) DoContext(ctx context.Context, cmd string, args ...interface{}) (reply interface{}, err error) {
+	return c.Do(cmd, args...)
+}
+
 // Send stores the command and arguments to be executed later (by the Receive
 // function) in a first-come first-served order
 func (c *Conn) Send(commandName string, args ...interface{}) error {
@@ -337,6 +344,12 @@ func (c *Conn) Receive() (reply interface{}, err error) {
 // ReceiveWithTimeout is a helper function for Receive call to satisfy the
 // ConnWithTimeout interface.
 func (c *Conn) ReceiveWithTimeout(timeout time.Duration) (interface{}, error) {
+	return c.Receive()
+}
+
+// ReceiveContext is a helper function for Receive call to satisfy the
+// ConnWithContext interface.
+func (c *Conn) ReceiveContext(ctx context.Context) (reply interface{}, err error) {
 	return c.Receive()
 }
 
