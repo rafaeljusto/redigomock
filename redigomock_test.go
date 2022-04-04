@@ -13,6 +13,7 @@ import (
 var (
 	_ redis.Conn            = &Conn{}
 	_ redis.ConnWithTimeout = &Conn{}
+	_ redis.ConnWithContext = &Conn{}
 )
 
 type Person struct {
