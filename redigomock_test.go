@@ -390,13 +390,15 @@ func TestSendReceiveWithWait(t *testing.T) {
 		for i := 0; i < len(ids); i++ {
 			values, err := redis.Values(conn.Receive())
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 
 			var person Person
 			err = redis.ScanStruct(values, &person)
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 
 			peopleLock.Lock()
@@ -495,7 +497,6 @@ func TestPubSub(t *testing.T) {
 			}
 		default:
 			t.Errorf("got wrong message type '%T' for message", msg)
-			break
 		}
 	}
 }

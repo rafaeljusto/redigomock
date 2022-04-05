@@ -48,7 +48,7 @@ func equal(commandName string, args []interface{}, cmd *Cmd) bool {
 		} else if implementsFuzzy(cmd.args[pos]) || implementsFuzzy(args[pos]) {
 			return false
 		} else {
-			if reflect.DeepEqual(cmd.args[pos], args[pos]) == false {
+			if !reflect.DeepEqual(cmd.args[pos], args[pos]) {
 				return false
 			}
 		}
@@ -65,10 +65,10 @@ func match(commandName string, args []interface{}, cmd *Cmd) bool {
 
 	for pos := range cmd.args {
 		if implementsFuzzy(cmd.args[pos]) {
-			if cmd.args[pos].(FuzzyMatcher).Match(args[pos]) == false {
+			if !cmd.args[pos].(FuzzyMatcher).Match(args[pos]) {
 				return false
 			}
-		} else if reflect.DeepEqual(cmd.args[pos], args[pos]) == false {
+		} else if !reflect.DeepEqual(cmd.args[pos], args[pos]) {
 			return false
 		}
 	}
@@ -122,9 +122,7 @@ func (c *Cmd) ExpectPanic(msg interface{}) *Cmd {
 // e.g - HMGET command
 func (c *Cmd) ExpectSlice(resp ...interface{}) *Cmd {
 	ifaces := []interface{}{}
-	for _, r := range resp {
-		ifaces = append(ifaces, r)
-	}
+	ifaces = append(ifaces, resp...)
 	c.expect(response{ifaces, nil, nil})
 	return c
 }
