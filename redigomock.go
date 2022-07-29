@@ -313,6 +313,16 @@ func (c *Conn) AddSubscriptionMessage(msg interface{}) {
 	c.subResponses = append(c.subResponses, resp)
 }
 
+func (c *Conn) AddSubscriptionError(err error) {
+	resp := response{}
+	resp.err = err
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.subResponses = append(c.subResponses, resp)
+}
+
 // Receive will process the queue created by the Send method, only one item
 // of the queue is processed by Receive call. It will work as the Do method
 func (c *Conn) Receive() (reply interface{}, err error) {
