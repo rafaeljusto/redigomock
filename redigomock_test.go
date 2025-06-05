@@ -131,7 +131,7 @@ func TestDoCommandMultipleReturnValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	if person.Name != "Ms. Jennifer" {
-		t.Errorf("Invalid name. Expected 'Mr. Johson' and got '%s'", person.Name)
+		t.Errorf("Invalid name. Expected 'Mr. Jennifer' and got '%s'", person.Name)
 	}
 	if person.Age != 28 {
 		t.Errorf("Invalid age. Expected '28' and got '%d'", person.Age)
