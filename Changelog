@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [3.1.2] - 2025-06-05
+### Fix
+- Typo in tests
+- Wrong license in source header comments
+- Empty internal errors after calling `Conn.Clear()`
+
 ## [3.1.1] - 2022-04-05
 ### Fix
 - Upgrade redigo dependency version to solve security warning
