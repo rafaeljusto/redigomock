@@ -161,6 +161,7 @@ func (c *Conn) Clear() {
 	c.queue = []queueElement{}
 	c.replies = []replyElement{}
 	c.stats = make(map[cmdHash]int)
+	c.errors = []error{}
 }
 
 // Do looks in the registered commands (via Command function) if someone

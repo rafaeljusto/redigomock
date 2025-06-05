@@ -610,6 +610,7 @@ func TestClear(t *testing.T) {
 
 	connection.Do("HGETALL", "person:1")
 	connection.Do("HGETALL", "person:2")
+	connection.Do("HGET", "non-existent-key")
 
 	connection.Clear()
 
@@ -623,6 +624,10 @@ func TestClear(t *testing.T) {
 
 	if len(connection.stats) > 0 {
 		t.Error("Clear function not clearing stats")
+	}
+
+	if len(connection.errors) > 0 {
+		t.Error("Clear function not clearing errors")
 	}
 }
 
